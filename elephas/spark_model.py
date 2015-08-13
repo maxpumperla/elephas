@@ -8,22 +8,19 @@ from pyspark.rdd import RDD
 
 from .utils.functional_utils import add_params, get_neutral, divide_by
 
+def get_train_config(nb_epoch, batch_size, verbose, validation_split):
+    train_config = {}
+    train_config['nb_epoch'] = nb_epoch
+    train_config['batch_size'] = batch_size
+    train_config['verbose'] = verbose
+    train_config['validation_split'] = validation_split
+    return train_config
+
+
 class SparkModel(object):
-    def __init__(self, sc, master_network, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1):
+    def __init__(self, sc, master_network):
         self.spark_context = sc
         self.master_network = master_network
-        self.nb_epoch = nb_epoch
-        self.batch_size = batch_size
-        self.verbose = verbose
-        self.validation_split = 0.1
-
-    def get_train_config(self):
-        train_config = {}
-        train_config['nb_epoch'] = self.nb_epoch
-        train_config['batch_size'] = self.batch_size
-        train_config['verbose'] = self.verbose
-        train_config['validation_split'] = self.validation_split
-        return train_config
 
     def get_network(self):
         return self.master_network
@@ -31,11 +28,11 @@ class SparkModel(object):
     def set_network(self, network):
         self.master_network = network
 
-    def train(self, rdd):
+    def train(self, rdd, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1):
         num_partitions = rdd.getNumPartitions()
         yaml = self.master_network.to_yaml()
         parameters = self.spark_context.broadcast(self.master_network.get_weights())
-        train_config = self.get_train_config()
+        train_config = get_train_config(nb_epoch, batch_size, verbose, validation_split)
 
         worker = SparkWorker(yaml, parameters, train_config)
         results = rdd.mapPartitions(worker.train)
