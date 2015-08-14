@@ -22,7 +22,7 @@ conf = SparkConf().setAppName('Elephas_App').setMaster('local[8]')
 sc = SparkContext(conf=conf)
 ```
 
-- Define a Keras model
+- Define and compile a Keras model
 ```python
 model = Sequential()
 model.add(Dense(784, 128))
@@ -33,6 +33,9 @@ model.add(Activation('relu'))
 model.add(Dropout(0.2))
 model.add(Dense(128, 10))
 model.add(Activation('softmax'))
+
+rms = RMSprop()
+model.compile(loss='categorical_crossentropy', optimizer=rms)
 ```
 
 - Create an RDD from numpy arrays 
