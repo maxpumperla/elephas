@@ -13,7 +13,7 @@ Currently Elephas is not available on PyPI, so you'll have to clone this reposit
 ```
 python setup.py install
 ```
-from within that directory. As this is not the place to explain how to install Spark, you should simply follow the instructions at the (Spark download section)[http://spark.apache.org/downloads.html] for a local installation. After installing both Keras and Spark, training a model is done as follows:
+from within that directory. As this is not the place to explain how to install Spark, you should simply follow the instructions at the [Spark download section](http://spark.apache.org/downloads.html) for a local installation. After installing both Keras and Spark, training a model is done as follows:
 
 - Create a local pyspark context
 ```python
