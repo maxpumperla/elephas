@@ -43,5 +43,5 @@ def lp_to_simple_rdd(lp_rdd, categorical=False, nb_classes=None):
             nb_classes = np.max(labels)+1
         rdd = lp_rdd.map(lambda lp: (from_vector(lp.features), encode_label(lp.label, nb_classes)))
     else: 
-        rdd = lp_rdd.map(lambda lp: (from_vector(lp.features), lp.labels))
+        rdd = lp_rdd.map(lambda lp: (from_vector(lp.features), lp.label))
     return rdd
