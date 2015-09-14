@@ -39,7 +39,7 @@ def put_deltas_to_server(delta, master='localhost:5000'):
     return urllib2.urlopen(request).read()
 
 
-class SparkModel(object):
+class AsynchSparkModel(object):
     def __init__(self, sc, master_network):
         self.spark_context = sc
         self.master_network = master_network
@@ -95,7 +95,6 @@ class SparkModel(object):
     def train(self, rdd, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1, num_workers=8):
 
         self.start_server()
-        #TODO: Incorporate proper usage of Spark master, see deepdist
 
         rdd = rdd.repartition(num_workers)
         yaml = self.master_network.to_yaml()
@@ -104,10 +103,6 @@ class SparkModel(object):
 
         worker = SparkWorker(yaml, parameters, train_config)
         results = rdd.mapPartitions(worker.train).collect()
-
-        # TODO: Replace results.first by self.master_network.get_weights()
-        #null_element = get_neutral(results.first())
-        #new_parameters = divide_by(results.fold(null_element, add_params), num_workers)
 
         res = get_server_weights()
         self.master_network.set_weights(res)
@@ -129,7 +124,6 @@ class SparkWorker(object):
         initial_weights = get_server_weights()
         model.set_weights(initial_weights)
 
-        # TODO: Have to drill into batches
         nb_epoch = self.train_config['nb_epoch']
         self.train_config['nb_epoch'] = 1
         for epoch in range(nb_epoch):
