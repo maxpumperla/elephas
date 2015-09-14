@@ -20,7 +20,7 @@ def get_train_config(nb_epoch, batch_size, verbose, validation_split):
 
 
 class SparkModel(object):
-    def __init__(self, sc, master_network):
+    def __init__(self, sc, master_network, *args, **kwargs):
         self.spark_context = sc
         self.master_network = master_network
 
