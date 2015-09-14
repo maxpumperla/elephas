@@ -28,8 +28,10 @@ class SparkModel(object):
     def set_network(self, network):
         self.master_network = network
 
-    def train(self, rdd, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1):
-        num_partitions = rdd.getNumPartitions()
+    def train(self, rdd, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1, num_workers=8):
+
+        rdd = rdd.repartition(num_workers)
+
         yaml = self.master_network.to_yaml()
         parameters = self.spark_context.broadcast(self.master_network.get_weights())
         train_config = get_train_config(nb_epoch, batch_size, verbose, validation_split)
@@ -57,3 +59,6 @@ class SparkWorker(object):
         model.set_weights(self.parameters.value)
         model.fit(X_train, y_train, show_accuracy=True, **self.train_config)
         yield model.get_weights()
+
+
+
