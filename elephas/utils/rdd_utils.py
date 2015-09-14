@@ -4,7 +4,7 @@ def to_simple_rdd(sc, features, labels):
     pairs = [(x,y) for x,y in zip(features, labels)]
     return sc.parallelize(pairs)
 
-def to_labeled_point(features, labels, categorical=False):
+def to_labeled_point(sc, features, labels, categorical=False):
     labeled_points = []
     for x,y in zip(features, labels):
         if categorical:
