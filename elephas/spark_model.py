@@ -6,7 +6,10 @@ from itertools import tee
 from keras.models import Sequential, model_from_yaml
 from pyspark.rdd import RDD
 
+from pyspark.mllib.classification.
+
 from .utils.functional_utils import add_params, get_neutral, divide_by
+from .utils.rdd_utils import lp_to_simple_rdd
 
 def get_train_config(nb_epoch, batch_size, verbose, validation_split):
     train_config = {}
@@ -29,6 +32,9 @@ class SparkModel(object):
         self.master_network = network
 
     def train(self, rdd, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1, num_workers=8):
+        _train_rdd(self, rdd, nb_epoch, batch_size, verbose, validation_split, num_workers)
+
+    def _train_rdd(self, rdd, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1, num_workers=8):
 
         rdd = rdd.repartition(num_workers)
 
@@ -59,6 +65,13 @@ class SparkWorker(object):
         model.set_weights(self.parameters.value)
         model.fit(X_train, y_train, show_accuracy=True, **self.train_config)
         yield model.get_weights()
+
+
+class SparkMLlibModel(SparkModel):
+
+    def train(self, labeled_points, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1, num_workers=8, categorical=False, nb_classes=None):
+        rdd = lp_to_simple_rdd(labeled_points, categorical, nb_classes)
+        _train_rdd(self, rdd, nb_epoch, batch_size, verbose, validation_split, num_workers)
 
 
 
