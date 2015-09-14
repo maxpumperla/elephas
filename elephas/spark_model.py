@@ -6,8 +6,6 @@ from itertools import tee
 from keras.models import Sequential, model_from_yaml
 from pyspark.rdd import RDD
 
-from pyspark.mllib.classification.
-
 from .utils.functional_utils import add_params, get_neutral, divide_by
 from .utils.rdd_utils import lp_to_simple_rdd
 from .mllib.adapter import to_matrix, from_matrix, to_vector, from_vector
