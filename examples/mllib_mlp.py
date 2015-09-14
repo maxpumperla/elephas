@@ -8,7 +8,7 @@ from keras.layers.core import Dense, Dropout, Activation
 from keras.optimizers import SGD, Adam, RMSprop
 from keras.utils import np_utils
 
-from elephas.spark_model import SparkModel
+from elephas.spark_model import SparkMLlibModel
 from elephas.utils.rdd_utils import to_labeled_point
 
 from pyspark import SparkContext, SparkConf
@@ -53,13 +53,13 @@ conf = SparkConf().setAppName('Mnist_Spark_MLP').setMaster('local[8]')
 sc = SparkContext(conf=conf)
 
 # Build RDD from numpy features and labels
-lp_rdd = to_labeled_point(X_train, Y_train, categorical=True)
+lp_rdd = to_labeled_point(sc, X_train, Y_train, categorical=True)
 
 # Initialize SparkModel from Keras model and Spark context
 spark_model = SparkMLlibModel(sc,model)
 
 # Train Spark model
-spark_model.train(rdd, nb_epoch=20, batch_size=32, verbose=0, validation_split=0.1, num_workers=8, categorical=True, nb_classes=nb_classes)
+spark_model.train(lp_rdd, nb_epoch=20, batch_size=32, verbose=0, validation_split=0.1, num_workers=8, categorical=True, nb_classes=nb_classes)
 
 # Evaluate Spark model by evaluating the underlying model
 score = spark_model.get_network().evaluate(X_test, Y_test, show_accuracy=True, verbose=2)
