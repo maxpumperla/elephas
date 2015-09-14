@@ -17,7 +17,7 @@ def from_data_frame(df, categorical=False, nb_classes=None):
     result = from_labeled_point(lp_rdd, categorical, nb_classes)
     return result
 
-def df_to_simple_rdd(df):
+def df_to_simple_rdd(df, categorical=False, nb_classes=None):
     lp_rdd = df.rdd.map(lambda row: LabeledPoint(row.label, row.features))
-    rdd = lp_to_simple_rdd(lp_rdd)
+    rdd = lp_to_simple_rdd(lp_rdd, categorical, nb_classes)
     return rdd
