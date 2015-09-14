@@ -1,5 +1,10 @@
 from __future__ import absolute_import
 
+from pyspark.mllib.regression import LabeledPoint
+import numpy as np
+
+from ..mllib.adapter import to_vector, from_vector
+
 def to_simple_rdd(sc, features, labels):
     pairs = [(x,y) for x,y in zip(features, labels)]
     return sc.parallelize(pairs)
@@ -34,9 +39,9 @@ def encode_label(label, nb_classes):
 def lp_to_simple_rdd(lp_rdd, categorical=False, nb_classes=None):
     if categorical:
         if not nb_classes:
-            labels = np.asarray(rdd.map(lambda lp: lp.label).collect(), dtype='int32')
+            labels = np.asarray(lp_rdd.map(lambda lp: lp.label).collect(), dtype='int32')
             nb_classes = np.max(labels)+1
         rdd = lp_rdd.map(lambda lp: (from_vector(lp.features), encode_label(lp.label, nb_classes)))
     else: 
         rdd = lp_rdd.map(lambda lp: (from_vector(lp.features), lp.labels))
-
+    return rdd
