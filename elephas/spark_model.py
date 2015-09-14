@@ -10,6 +10,7 @@ from pyspark.mllib.classification.
 
 from .utils.functional_utils import add_params, get_neutral, divide_by
 from .utils.rdd_utils import lp_to_simple_rdd
+from .mllib.adapter import to_matrix, from_matrix, to_vector, from_vector
 
 def get_train_config(nb_epoch, batch_size, verbose, validation_split):
     train_config = {}
@@ -30,6 +31,9 @@ class SparkModel(object):
 
     def set_network(self, network):
         self.master_network = network
+
+    def predict(data):
+        return self.master_network.predict(data)
 
     def train(self, rdd, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1, num_workers=8):
         _train_rdd(self, rdd, nb_epoch, batch_size, verbose, validation_split, num_workers)
@@ -73,5 +77,10 @@ class SparkMLlibModel(SparkModel):
         rdd = lp_to_simple_rdd(labeled_points, categorical, nb_classes)
         _train_rdd(self, rdd, nb_epoch, batch_size, verbose, validation_split, num_workers)
 
-
-
+    def predict(mllib_data):
+        if isinstance(mllib_data, Matrix):
+            return to_matrix(self.master_network.predict(from_matrix(mllib_data)))
+        elif isinstance(mllib_data, Vector):
+            return to_vector(self.master_network.predict(from_vector(mllib_data)))
+        else: 
+            print 'Provide either an MLLib matrix or vector'
