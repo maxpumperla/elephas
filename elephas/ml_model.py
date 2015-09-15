@@ -10,14 +10,21 @@ from .utils.rdd_utils import from_vector, to_vector
 from .ml.adapter import df_to_simple_rdd
 
 class ElephasEstimator(SparkModel, Estimator):
-    def __init__(self, sc, master_network, categorical=True):
+    def __init__(self, sc, master_network,  nb_epoch=20, batch_size=32, verbose=0, validation_split=0.1, num_workers=8, categorical=True, nb_classes=None):
         super(ElephasEstimator, self).__init__(sc, master_network)
+        self.nb_epoch = nb_epoch
+        self.batch_size = batch_size
+        self.verbose = verbose
+        self.validation_split = validation_split
+        self.num_workers = num_workers
         self.categorical = categorical
+        self.nb_classes = nb_classes
 
     def _fit(self, df):
-        simple_rdd = df_to_simple_rdd(df, categorical=self.categorical)
+        simple_rdd = df_to_simple_rdd(df, categorical=self.categorical, nb_classes=self.nb_classes)
         print '>>> Converted to RDD'
-        self.train(simple_rdd)
+        self.train(simple_rdd, nb_epoch=self.nb_epoch, batch_size=self.batch_size, verbose=self.verbose, 
+                validation_split=self.validation_split, num_workers=self.num_workers)
         print '>>> Training phase done'
         return ElephasTransformer(self.spark_context, self.master_network)
 
