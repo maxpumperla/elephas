@@ -54,13 +54,12 @@ sc = SparkContext(conf=conf)
 
 # Build RDD from numpy features and labels
 rdd = to_simple_rdd(sc, X_train, Y_train)
-rdd = rdd.repartition(8)
 
 # Initialize SparkModel from Keras model and Spark context
 spark_model = SparkModel(sc,model)
 
 # Train Spark model
-spark_model.train(rdd, nb_epoch=20, batch_size=32, verbose=0, validation_split=0.1)
+spark_model.train(rdd, nb_epoch=nb_epoch, batch_size=batch_size, verbose=0, validation_split=0.1, num_workers=8)
 
 # Evaluate Spark model by evaluating the underlying model
 score = spark_model.get_network().evaluate(X_test, Y_test, show_accuracy=True, verbose=2)
