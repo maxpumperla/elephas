@@ -64,7 +64,6 @@ class SparkWorker(object):
         X_train = np.asarray([x for x,y in feature_iterator])
         y_train = np.asarray([y for x,y in label_iterator])
 
-        print y_train.shape[0]
         model = model_from_yaml(self.yaml)
         model.set_weights(self.parameters.value)
         # Only start training if there's more than one batch of data
