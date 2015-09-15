@@ -12,6 +12,7 @@ from elephas.ml_model import ElephasEstimator, ElephasTransformer
 from elephas.ml.adapter import to_data_frame
 
 from pyspark import SparkContext, SparkConf
+from pyspark.mllib.evaluation import MulticlassMetrics
 
 # Define basic parameters
 batch_size = 128
@@ -57,7 +58,8 @@ df = to_data_frame(sc, X_train, Y_train, categorical=True)
 test_df = to_data_frame(sc, X_test, Y_test, categorical=True)
 
 # Initialize Spark ML Estimator
-estimator = ElephasEstimator(sc,model, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1, num_workers=8, categorical=True, nb_classes=nb_classes)
+estimator = ElephasEstimator(sc,model, nb_epoch=nb_epoch, batch_size=batch_size, 
+        verbose=0, validation_split=0.1, num_workers=8, categorical=True, nb_classes=nb_classes)
 
 # Fitting a model returns a Transformer
 fitted_model = estimator.fit(df)
@@ -65,4 +67,9 @@ fitted_model = estimator.fit(df)
 # Evaluate Spark model by evaluating the underlying model
 prediction = fitted_model.transform(df)
 pnl = prediction.select("label", "prediction")
-pnl.show(30)
+pnl.show(100)
+
+prediction_and_label= pnl.map(lambda row: (row.label, row.prediction))
+metrics = MulticlassMetrics(prediction_and_label)
+print(metrics.precision())
+print(metrics.recall())
