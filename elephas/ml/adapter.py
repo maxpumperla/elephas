@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-from pyspark.sql import SQLContext()
+from pyspark.sql import SQLContext
 from pyspark.mllib.regression import LabeledPoint
 from ..utils.rdd_utils import from_labeled_point, to_labeled_point, lp_to_simple_rdd
 
