@@ -59,13 +59,17 @@ class SparkWorker(object):
         self.train_config = train_config
 
     def train(self, data_iterator):
+
         feature_iterator, label_iterator = tee(data_iterator,2)
         X_train = np.asarray([x for x,y in feature_iterator])
         y_train = np.asarray([y for x,y in label_iterator])
 
+        print y_train.shape[0]
         model = model_from_yaml(self.yaml)
         model.set_weights(self.parameters.value)
-        model.fit(X_train, y_train, show_accuracy=True, **self.train_config)
+        # Only start training if there's more than one batch of data
+        if X_train.shape[0] > self.train_config.get('batch_size'):
+            model.fit(X_train, y_train, show_accuracy=True, **self.train_config)
         yield model.get_weights()
 
 
