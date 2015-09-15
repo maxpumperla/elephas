@@ -9,7 +9,7 @@ For now, elephas is a straight forward parallelization of Keras using Spark's RD
 
 
 ## Getting started
-Install elephas with 
+Install elephas from PyPI with 
 ```
 pip install elephas
 ```
@@ -56,14 +56,28 @@ rdd = to_simple_rdd(sc, X_train, Y_train)
 ```python
 from elephas.spark_model import SparkModel
 spark_model = SparkModel(sc,model)
-spark_model.train(rdd, nb_epoch=20, batch_size=32, verbose=0, validation_split=0.1)
+spark_model.train(rdd, nb_epoch=20, batch_size=32, verbose=0, validation_split=0.1, num_workers=8)
 ```
 
 - Run your script using spark-submit
 ```
 spark-submit --driver-memory 1G ./your_script.py
 ```
-See the examples folder for working examples.
+Increasing the driver memory even further may be necessary, as the set of parameters in a network may be very large and collecting them on the driver eats up a lot of resources. See the examples folder for a few working examples.
+
+## Spark MLlib integration
+Following up on the last example, to create an RDD of LabeledPoints for supervised training from pairs of numpy arrays, use 
+```python
+from elephas.utils.rdd_utils import to_labeled_point
+lp_rdd = to_labeled_point(sc, X_train, Y_train, categorical=True)
+```
+Training a given LabeledPoint-RDD is very similar to what we've seen already
+```python
+from elephas.spark_model import SparkMLlibModel
+spark_model = SparkMLlibModel(sc,model)
+spark_model.train(lp_rdd, nb_epoch=20, batch_size=32, verbose=0, validation_split=0.1, num_workers=8, categorical=True, nb_classes=nb_classes)
+```
+
 
 ## In the pipeline
 
