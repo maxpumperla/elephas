@@ -5,15 +5,23 @@ Elephas brings deep learning with [Keras](http://keras.io) to [Apache Spark](htt
 
 ἐλέφας is Greek for _ivory_ and an accompanying project to κέρας, meaning _horn_. If this seems weird mentioning, like a bad dream, you should confirm it actually is at the [Keras documentation](https://github.com/fchollet/keras/blob/master/README.md). Elephas also means _elephant_, as in stuffed yellow elephant.
 
-For now, elephas is a straight forward parallelization of Keras using Spark's RDDs. Models are initialized on the driver, then serialized and shipped to workers. Spark workers deserialize the model and train their chunk of data before broadcasting their parameters back to the driver. The "master" model is updated by averaging worker parameters. 
+For now, elephas is a straight forward parallelization of Keras using Spark's RDDs and data frames. Models are initialized on the driver, then serialized and shipped to workers. Spark workers deserialize the model and train their chunk of data before broadcasting their parameters back to the driver. The "master" model is updated by averaging worker parameters. 
 
 
 ## Getting started
-Currently Elephas is not available on PyPI, so you'll have to clone this repository and run
+Install elephas with 
 ```
-python setup.py install
+pip install elephas
 ```
-from within that directory. As this is not the place to explain how to install Spark, you should simply follow the instructions at the [Spark download section](http://spark.apache.org/downloads.html) for a local installation. After installing both Keras and Spark, training a model is done as follows:
+A quick way to install Spark locally is to use homebrew on Mac 
+```
+brew install spark
+```
+or linuxbrew on linux
+```
+brew install apache-spark
+```
+If this is not an option, you should simply follow the instructions at the [Spark download section](http://spark.apache.org/downloads.html). After installing both Keras and Spark, training a model is done as follows:
 
 - Create a local pyspark context
 ```python
@@ -55,7 +63,7 @@ spark_model.train(rdd, nb_epoch=20, batch_size=32, verbose=0, validation_split=0
 ```
 spark-submit --driver-memory 1G ./your_script.py
 ```
-See the examples folder for a working example.
+See the examples folder for working examples.
 
 ## In the pipeline
 
