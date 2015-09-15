@@ -8,8 +8,6 @@ from keras.layers.core import Dense, Dropout, Activation
 from keras.optimizers import SGD, Adam, RMSprop
 from keras.utils import np_utils
 
-from elephas.spark_model import SparkMLlibModel
-from elephas.utils.rdd_utils import to_labeled_point
 from elephas.ml_model import ElephasEstimator, ElephasTransformer
 from elephas.ml.adapter import to_data_frame
 
@@ -59,7 +57,7 @@ df = to_data_frame(sc, X_train, Y_train, categorical=True)
 test_df = to_data_frame(sc, X_test, Y_test, categorical=True)
 
 # Initialize Spark ML Estimator
-estimator = ElephasEstimator(sc,model, categorical=True)
+estimator = ElephasEstimator(sc,model, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1, num_workers=8, categorical=True, nb_classes=nb_classes)
 
 # Fitting a model returns a Transformer
 fitted_model = estimator.fit(df)
