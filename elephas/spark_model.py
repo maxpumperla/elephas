@@ -27,6 +27,12 @@ class SparkModel(object):
         train_config['validation_split'] = validation_split
         return train_config
 
+    def get_config(self):
+        model_config = {}
+        model_config['model'] = self.master_network.get_config()
+        model_config['optimizer'] = self.optimizer.get_config()
+        model_config['mode'] = self.mode
+
     def get_network(self):
         return self.master_network
 
