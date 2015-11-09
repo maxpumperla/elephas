@@ -13,11 +13,13 @@ from .mllib.adapter import to_matrix, from_matrix, to_vector, from_vector
 
 
 class SparkModel(object):
-    def __init__(self, sc, master_network, *args, **kwargs):
+    def __init__(self, sc, master_network, optimizer, mode='asynchronous', *args, **kwargs):
         self.spark_context = sc
         self.master_network = master_network
+        self.optimizer = optimizer
+        self.mode = mode
 
-    def get_config(self, nb_epoch, batch_size, verbose, validation_split):
+    def get_train_config(self, nb_epoch, batch_size, verbose, validation_split):
         train_config = {}
         train_config['nb_epoch'] = nb_epoch
         train_config['batch_size'] = batch_size
@@ -43,7 +45,7 @@ f
 
         yaml = self.master_network.to_yaml()
         parameters = self.spark_context.broadcast(self.master_network.get_weights())
-        train_config = self.get_config(nb_epoch, batch_size, verbose, validation_split)
+        train_config = self.get_train_config(nb_epoch, batch_size, verbose, validation_split)
 
         worker = SparkWorker(yaml, parameters, train_config)
         results = rdd.mapPartitions(worker.train)
