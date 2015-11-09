@@ -104,9 +104,16 @@ class SparkModel(object):
         return self.master_network.predict(data)
 
     def train(self, rdd, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1, num_workers=8):
-        self.train_rdd(rdd, nb_epoch, batch_size, verbose, validation_split, num_workers)
+        if self.mode == 'synchronous':
+            self.train_synch(rdd, nb_epoch, batch_size, verbose, validation_split, num_workers)
+        elif self.mode == 'asynchronous':
+            self.train_async(rdd, nb_epoch, batch_size, verbose, validation_split, num_workers)
+        elif self.mode == 'dogwild':
+            self.train_async(rdd, nb_epoch, batch_size, verbose, validation_split, num_workers)
+        else:
+            print 'Choosse from one of the three available modes: asynchronous, synchronous or dogwild'
 
-    def train_rdd(self, rdd, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1, num_workers=8):
+    def train_synch(self, rdd, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1, num_workers=8):
 
         rdd = rdd.repartition(num_workers)
 
