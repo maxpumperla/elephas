@@ -76,7 +76,7 @@ class SGD(Optimizer):
                 new_p = p + v
 
             self.updates.append((p, c(new_p)))  # apply constraints
-        return self.updates
+        return c(new_p)
 
     def get_config(self):
         return {"name": self.__class__.__name__,
@@ -103,7 +103,7 @@ class RMSprop(Optimizer):
 
             new_p = p - self.lr * g / T.sqrt(new_a + self.epsilon)
             self.updates.append((p, c(new_p)))  # apply constraints
-        return self.updates
+        return c(new_p)
 
     def get_config(self):
         return {"name": self.__class__.__name__,
@@ -127,7 +127,7 @@ class Adagrad(Optimizer):
             self.updates.append((a, new_a))
             new_p = p - self.lr * g / T.sqrt(new_a + self.epsilon)
             self.updates.append((p, c(new_p)))  # apply constraints
-        return self.updates
+        return c(new_p)
 
     def get_config(self):
         return {"name": self.__class__.__name__,
@@ -164,7 +164,7 @@ class Adadelta(Optimizer):
             # update delta_accumulator
             new_d_a = self.rho * d_a + (1 - self.rho) * update ** 2
             self.updates.append((d_a, new_d_a))
-        return self.updates
+        return new_p
 
     def get_config(self):
         return {"name": self.__class__.__name__,
@@ -201,7 +201,7 @@ class Adam(Optimizer):
             self.updates.append((m, m_t))
             self.updates.append((v, v_t))
             self.updates.append((p, c(p_t)))  # apply constraints
-        return self.updates
+        return c(p_t)
 
     def get_config(self):
         return {"name": self.__class__.__name__,
