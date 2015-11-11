@@ -98,7 +98,8 @@ class SparkModel(object):
             delta = pickle.loads(request.data)
             if self.mode == 'asynchronous':
                 self.lock.acquire_write()
-            self.weights = add_params(self.weights,delta)
+            self.weights = self.optimizer.get_updates(self.weights, self.master_network.constrains, delta)
+            #self.weights = add_params(self.weights,delta)
             if self.mode == 'asynchronous':
                 self.lock.release()
             return 'Update done'
@@ -130,10 +131,10 @@ class SparkModel(object):
             new_parameters = self.get_server_weights()
         elif self.mode == 'synchronous':
             worker = SparkWorker(yaml, parameters, train_config)
-            results = rdd.mapPartitions(worker.train)
-            null_element = get_neutral(results.first())
-            new_parameters = results.fold(null_element, add_params)
-
+            deltas = rdd.mapPartitions(worker.train).collect()
+            new_parameters = self.master_network.get_weights()
+            for delta in deltas:
+                new_parameters = self.optimizer.get_updates(self.weights, self.master_network.constrains, delta)
         self.master_network.set_weights(new_parameters)
 
         if self.mode in ['asynchronous', 'hogwild']:
@@ -200,8 +201,6 @@ class AsynchronousSparkWorker(object):
                         X = slice_X(X_train, batch_ids)
                         y = slice_X(y_train, batch_ids)
                         model.train_on_batch(X,y)
-                        # TODO
-                        # model.fit(X_train, y_train, show_accuracy=True, **self.train_config)
                         weights_after_training = model.get_weights()
                         deltas = subtract_params(weights_after_training, weights_before_training)
                         self.put_deltas_to_server(deltas)
