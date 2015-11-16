@@ -1,21 +1,20 @@
 '''
-This is essentially a copy of keras' optimizers.py. 
+This is essentially a copy of keras' optimizers.py.
 We have to modify the base class 'Optimizer' here, 
 as the gradients will be provided by the Spark workers, not Theano.
 '''
 from __future__ import absolute_import
 import theano
 import theano.tensor as T
+import numpy as np
 
 from keras.utils.theano_utils import shared_zeros, shared_scalar, floatX
 from six.moves import zip
-
 
 def clip_norm(g, c, n):
     if c > 0:
         g = T.switch(T.ge(n, c), g * c / n, g)
     return g
-
 
 def kl_divergence(p, p_hat):
     return p_hat - p + p * T.log(p / p_hat)
@@ -46,7 +45,7 @@ class Optimizer(object):
         if hasattr(self, 'clipvalue') and self.clipvalue > 0:
             grads = [T.clip(g, -self.clipvalue, self.clipvalue) for g in grads]
 
-        return grads
+        return theano.shared(grads)
 
     def get_config(self):
         return {"name": self.__class__.__name__}
@@ -116,18 +115,26 @@ class Adagrad(Optimizer):
     def __init__(self, lr=0.01, epsilon=1e-6, *args, **kwargs):
         super(Adagrad, self).__init__(**kwargs)
         self.__dict__.update(locals())
-        self.lr = shared_scalar(lr)
+        #self.lr = shared_scalar(lr)
+        self.lr = lr
 
     def get_updates(self, params, constraints, grads):
-        accumulators = [shared_zeros(p.get_value().shape) for p in params]
-        self.updates = []
+        #accumulators = [shared_zeros(theano.shared(p).get_value().shape) for p in params]
+        accumulators = [np.zeros_like(p) for p in params]
+        #self.updates = []
+        new_weights = []
 
         for p, g, a, c in zip(params, grads, accumulators, constraints):
+            #p = theano.shared(p)
             new_a = a + g ** 2  # update accumulator
-            self.updates.append((a, new_a))
-            new_p = p - self.lr * g / T.sqrt(new_a + self.epsilon)
-            self.updates.append((p, c(new_p)))  # apply constraints
-        return c(new_p)
+            #self.updates.append((a, new_a))
+            #new_p = p - self.lr * g / T.sqrt(new_a + self.epsilon)
+            new_p = p - self.lr * g / np.sqrt(new_a + self.epsilon)
+
+            #self.updates.append((p, c(new_p)))  # apply constraints
+            new_weights.append(new_p)
+
+        return new_weights
 
     def get_config(self):
         return {"name": self.__class__.__name__,
