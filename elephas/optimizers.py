@@ -55,33 +55,32 @@ class SGD(Optimizer):
     def __init__(self, lr=0.01, momentum=0., decay=0., nesterov=False, *args, **kwargs):
         super(SGD, self).__init__(**kwargs)
         self.__dict__.update(locals())
-        self.iterations = shared_scalar(0)
-        self.lr = shared_scalar(lr)
-        self.momentum = shared_scalar(momentum)
-        self.decay = shared_scalar(decay)
+        self.iterations = 0
+        self.lr = lr
+        self.momentum = momentum
+        self.decay = decay
 
     def get_updates(self, params, constraints, grads):
         lr = self.lr * (1.0 / (1.0 + self.decay * self.iterations))
         self.updates = [(self.iterations, self.iterations + 1.)]
+        new_weights = []
 
         for p, g, c in zip(params, grads, constraints):
-            m = shared_zeros(p.get_value().shape)  # momentum
+            m = np.zeros_like(p)  # momentum
             v = self.momentum * m - lr * g  # velocity
-            self.updates.append((m, v))
-
             if self.nesterov:
                 new_p = p + self.momentum * v - lr * g
             else:
                 new_p = p + v
+            new_weights.append(c(new_p))
 
-            self.updates.append((p, c(new_p)))  # apply constraints
-        return c(new_p)
+        return new_weights
 
     def get_config(self):
         return {"name": self.__class__.__name__,
-                "lr": float(self.lr.get_value()),
-                "momentum": float(self.momentum.get_value()),
-                "decay": float(self.decay.get_value()),
+                "lr": float(self.lr),
+                "momentum": float(self.momentum),
+                "decay": float(self.decay),
                 "nesterov": self.nesterov}
 
 
@@ -89,25 +88,26 @@ class RMSprop(Optimizer):
     def __init__(self, lr=0.001, rho=0.9, epsilon=1e-6, *args, **kwargs):
         super(RMSprop, self).__init__(**kwargs)
         self.__dict__.update(locals())
-        self.lr = shared_scalar(lr)
-        self.rho = shared_scalar(rho)
+        self.lr = lr
+        self.rho = rho
 
     def get_updates(self, params, constraints, grads):
-        accumulators = [shared_zeros(p.get_value().shape) for p in params]
-        self.updates = []
+        accumulators = [np.zeros_like(p) for p in params]
+        new_weights = []
 
         for p, g, a, c in zip(params, grads, accumulators, constraints):
             new_a = self.rho * a + (1 - self.rho) * g ** 2  # update accumulator
             self.updates.append((a, new_a))
 
             new_p = p - self.lr * g / T.sqrt(new_a + self.epsilon)
-            self.updates.append((p, c(new_p)))  # apply constraints
-        return c(new_p)
+            new_weights.append(c(new_p))
+
+        return new_weights
 
     def get_config(self):
         return {"name": self.__class__.__name__,
-                "lr": float(self.lr.get_value()),
-                "rho": float(self.rho.get_value()),
+                "lr": float(self.lr),
+                "rho": float(self.rho),
                 "epsilon": self.epsilon}
 
 
@@ -115,30 +115,22 @@ class Adagrad(Optimizer):
     def __init__(self, lr=0.01, epsilon=1e-6, *args, **kwargs):
         super(Adagrad, self).__init__(**kwargs)
         self.__dict__.update(locals())
-        #self.lr = shared_scalar(lr)
         self.lr = lr
 
     def get_updates(self, params, constraints, grads):
-        #accumulators = [shared_zeros(theano.shared(p).get_value().shape) for p in params]
         accumulators = [np.zeros_like(p) for p in params]
-        #self.updates = []
         new_weights = []
 
         for p, g, a, c in zip(params, grads, accumulators, constraints):
-            #p = theano.shared(p)
-            new_a = a + g ** 2  # update accumulator
-            #self.updates.append((a, new_a))
-            #new_p = p - self.lr * g / T.sqrt(new_a + self.epsilon)
+            new_a = a + g ** 2
             new_p = p - self.lr * g / np.sqrt(new_a + self.epsilon)
-
-            #self.updates.append((p, c(new_p)))  # apply constraints
             new_weights.append(new_p)
 
         return new_weights
 
     def get_config(self):
         return {"name": self.__class__.__name__,
-                "lr": float(self.lr.get_value()),
+                "lr": float(self.lr),
                 "epsilon": self.epsilon}
 
 
@@ -149,33 +141,31 @@ class Adadelta(Optimizer):
     def __init__(self, lr=1.0, rho=0.95, epsilon=1e-6, *args, **kwargs):
         super(Adadelta, self).__init__(**kwargs)
         self.__dict__.update(locals())
-        self.lr = shared_scalar(lr)
+        self.lr = lr
 
     def get_updates(self, params, constraints, grads):
-        accumulators = [shared_zeros(p.get_value().shape) for p in params]
-        delta_accumulators = [shared_zeros(p.get_value().shape) for p in params]
-        self.updates = []
+        accumulators = [np.zeros_like(p) for p in params]
+        delta_accumulators = [np.zeros_like(p) for p in params]
+        new_weights = []
 
         for p, g, a, d_a, c in zip(params, grads, accumulators,
                                    delta_accumulators, constraints):
             new_a = self.rho * a + (1 - self.rho) * g ** 2  # update accumulator
             self.updates.append((a, new_a))
-
             # use the new accumulator and the *old* delta_accumulator
-            update = g * T.sqrt(d_a + self.epsilon) / T.sqrt(new_a +
+            update = g * np.sqrt(d_a + self.epsilon) / np.sqrt(new_a +
                                                              self.epsilon)
-
             new_p = p - self.lr * update
             self.updates.append((p, c(new_p)))  # apply constraints
 
             # update delta_accumulator
             new_d_a = self.rho * d_a + (1 - self.rho) * update ** 2
-            self.updates.append((d_a, new_d_a))
-        return new_p
+            new_weights.append(new_p)
+        return new_weights
 
     def get_config(self):
         return {"name": self.__class__.__name__,
-                "lr": float(self.lr.get_value()),
+                "lr": float(self.lr),
                 "rho": self.rho,
                 "epsilon": self.epsilon}
 
@@ -188,14 +178,14 @@ class Adam(Optimizer):
     def __init__(self, lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-8, *args, **kwargs):
         super(Adam, self).__init__(**kwargs)
         self.__dict__.update(locals())
-        self.iterations = shared_scalar(0)
-        self.lr = shared_scalar(lr)
+        self.iterations = 0
+        self.lr = lr
 
     def get_updates(self, params, constraints, grads):
-        self.updates = [(self.iterations, self.iterations+1.)]
+        new_weights = []
 
         t = self.iterations + 1
-        lr_t = self.lr * T.sqrt(1-self.beta_2**t)/(1-self.beta_1**t)
+        lr_t = self.lr * np.sqrt(1-self.beta_2**t)/(1-self.beta_1**t)
 
         for p, g, c in zip(params, grads, constraints):
             m = theano.shared(p.get_value() * 0.)  # zero init of moment
@@ -204,15 +194,13 @@ class Adam(Optimizer):
             m_t = (self.beta_1 * m) + (1 - self.beta_1) * g
             v_t = (self.beta_2 * v) + (1 - self.beta_2) * (g**2)
             p_t = p - lr_t * m_t / (T.sqrt(v_t) + self.epsilon)
+            new_weights.append(c(p_t))
 
-            self.updates.append((m, m_t))
-            self.updates.append((v, v_t))
-            self.updates.append((p, c(p_t)))  # apply constraints
-        return c(p_t)
+        return new_weights
 
     def get_config(self):
         return {"name": self.__class__.__name__,
-                "lr": float(self.lr.get_value()),
+                "lr": float(self.lr),
                 "beta_1": self.beta_1,
                 "beta_2": self.beta_2,
                 "epsilon": self.epsilon}
