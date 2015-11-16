@@ -99,7 +99,7 @@ class RMSprop(Optimizer):
             new_a = self.rho * a + (1 - self.rho) * g ** 2  # update accumulator
             self.updates.append((a, new_a))
 
-            new_p = p - self.lr * g / T.sqrt(new_a + self.epsilon)
+            new_p = p - self.lr * g / np.sqrt(new_a + self.epsilon)
             new_weights.append(c(new_p))
 
         return new_weights
@@ -188,12 +188,12 @@ class Adam(Optimizer):
         lr_t = self.lr * np.sqrt(1-self.beta_2**t)/(1-self.beta_1**t)
 
         for p, g, c in zip(params, grads, constraints):
-            m = theano.shared(p.get_value() * 0.)  # zero init of moment
-            v = theano.shared(p.get_value() * 0.)  # zero init of velocity
+            m = np.zeros_like(p)  # zero init of moment
+            v = np.zeros_like(p) # zero init of velocity
 
             m_t = (self.beta_1 * m) + (1 - self.beta_1) * g
             v_t = (self.beta_2 * v) + (1 - self.beta_2) * (g**2)
-            p_t = p - lr_t * m_t / (T.sqrt(v_t) + self.epsilon)
+            p_t = p - lr_t * m_t / (np.sqrt(v_t) + self.epsilon)
             new_weights.append(c(p_t))
 
         return new_weights
