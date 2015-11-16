@@ -16,9 +16,6 @@ from flask import Flask, request
 import urllib2
 import urlparse
 
-import copy
-
-from .optimizers import Optimizer
 from .utils.rwlock import RWLock
 from .utils.functional_utils import add_params, subtract_params, get_neutral
 from .utils.rdd_utils import lp_to_simple_rdd
@@ -40,7 +37,7 @@ class SparkModel(object):
     def __init__(self, sc, master_network, optimizer=None, mode='asynchronous', frequency='epoch', num_workers=4,  *args, **kwargs):
         self.spark_context = sc
         self.master_network = master_network
-        if optimizer = None:
+        if optimizer == None:
             self.optimizer = master_network.optimizer
         else:
             self.optimizer = optimizer
@@ -49,8 +46,6 @@ class SparkModel(object):
         self.num_workers = num_workers
 
         self.weights = master_network.get_weights()
-        print('Initial weights')
-        print(self.weights[3])
         self.pickled_weights = None
         self.lock = RWLock()
 
@@ -106,8 +101,6 @@ class SparkModel(object):
         @app.route('/update', methods=['POST'])
         def update_parameters():
             delta = pickle.loads(request.data)
-            print('new Delta:')
-            print(delta[3])
             if self.mode == 'asynchronous':
                 self.lock.acquire_write()
             self.weights = self.optimizer.get_updates(self.weights, self.master_network.constraints, delta)
@@ -141,8 +134,6 @@ class SparkModel(object):
             worker = AsynchronousSparkWorker(yaml, train_config, self.frequency)
             resultsi = rdd.mapPartitions(worker.train).collect()
             new_parameters = get_server_weights()
-            print(init[3] == new_parameters[3])
-            print(new_parameters[3])
         elif self.mode == 'synchronous':
             parameters = self.spark_context.broadcast(self.master_network.get_weights())
             worker = SparkWorker(yaml, parameters, train_config)
@@ -200,18 +191,12 @@ class AsynchronousSparkWorker(object):
 
         if self.frequency == 'epoch':
             for epoch in range(nb_epoch):
-                server_weights = get_server_weights()
-                print('Weights before')
-                print(server_weights[3])
-
-                weights_before_training = copy.deepcopy(server_weights)
-                model.set_weights(server_weights)
+                weights_before_training = get_server_weights()
+                model.set_weights(weights_before_training)
+                self.train_config['nb_epoch'] = 1
                 if X_train.shape[0] > batch_size:
-                    # TODO: Train just one epoch
                     model.fit(X_train, y_train, show_accuracy=True, **self.train_config)
-                print('Weights after')
-                print(model.get_weights()[3])
-                weights_after_training = copy.deepcopy(model.get_weights())
+                weights_after_training = model.get_weights()
                 deltas = subtract_params(weights_before_training, weights_after_training)
                 put_deltas_to_server(deltas)
         elif self.frequency == 'batch':
