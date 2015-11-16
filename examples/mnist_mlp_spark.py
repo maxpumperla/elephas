@@ -10,13 +10,14 @@ from keras.utils import np_utils
 
 from elephas.spark_model import SparkModel
 from elephas.utils.rdd_utils import to_simple_rdd
+from elephas import optimizers as elephas_optimizers
 
 from pyspark import SparkContext, SparkConf
 
 # Define basic parameters
-batch_size = 128
+batch_size = 256
 nb_classes = 10
-nb_epoch = 20
+nb_epoch = 5
 
 # Load data
 (X_train, y_train), (X_test, y_test) = mnist.load_data()
@@ -35,18 +36,18 @@ Y_train = np_utils.to_categorical(y_train, nb_classes)
 Y_test = np_utils.to_categorical(y_test, nb_classes)
 
 model = Sequential()
-model.add(Dense(784, 128))
+model.add(Dense(128, input_dim=784))
 model.add(Activation('relu'))
 model.add(Dropout(0.2))
-model.add(Dense(128, 128))
+model.add(Dense(128))
 model.add(Activation('relu'))
 model.add(Dropout(0.2))
-model.add(Dense(128, 10))
+model.add(Dense(10))
 model.add(Activation('softmax'))
 
 # Compile model
-rms = RMSprop()
-model.compile(loss='categorical_crossentropy', optimizer=rms)
+sgd = SGD(lr=0.01)
+model.compile(loss='categorical_crossentropy', optimizer=sgd)
 
 # Create Spark context
 conf = SparkConf().setAppName('Mnist_Spark_MLP').setMaster('local[8]')
@@ -55,12 +56,19 @@ sc = SparkContext(conf=conf)
 # Build RDD from numpy features and labels
 rdd = to_simple_rdd(sc, X_train, Y_train)
 
+print('keras weights')
+print(model.get_weights()[3])
+
 # Initialize SparkModel from Keras model and Spark context
-spark_model = SparkModel(sc,model)
+adagrad = elephas_optimizers.Adagrad()
+spark_model = SparkModel(sc,model, optimizer=adagrad, frequency='epoch', mode='synchronous', num_workers=3)
 
 # Train Spark model
-spark_model.train(rdd, nb_epoch=nb_epoch, batch_size=batch_size, verbose=0, validation_split=0.1, num_workers=8)
+spark_model.train(rdd, nb_epoch=nb_epoch, batch_size=batch_size, verbose=2, validation_split=0.1)
 
 # Evaluate Spark model by evaluating the underlying model
 score = spark_model.get_network().evaluate(X_test, Y_test, show_accuracy=True, verbose=2)
 print('Test accuracy:', score[1])
+
+print(spark_model.get_network().predict_classes(X_test[:100]))
+print(Y_test[:100])
