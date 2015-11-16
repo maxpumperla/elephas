@@ -37,10 +37,13 @@ def put_deltas_to_server(delta, master='localhost:5000'):
 
 
 class SparkModel(object):
-    def __init__(self, sc, master_network, optimizer, mode='asynchronous', frequency='epoch', num_workers=4,  *args, **kwargs):
+    def __init__(self, sc, master_network, optimizer=None, mode='asynchronous', frequency='epoch', num_workers=4,  *args, **kwargs):
         self.spark_context = sc
         self.master_network = master_network
-        self.optimizer = optimizer
+        if optimizer = None:
+            self.optimizer = master_network.optimizer
+        else:
+            self.optimizer = optimizer
         self.mode = mode
         self.frequency = frequency
         self.num_workers = num_workers
@@ -107,11 +110,6 @@ class SparkModel(object):
             print(delta[3])
             if self.mode == 'asynchronous':
                 self.lock.acquire_write()
-            new_weights = []
-            for p, g in zip(self.weights, delta):
-                new_p = p + g
-                new_weights.append(new_p)
-
             self.weights = self.optimizer.get_updates(self.weights, self.master_network.constraints, delta)
             if self.mode == 'asynchronous':
                 self.lock.release()
