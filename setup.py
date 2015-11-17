@@ -7,6 +7,7 @@ setup(name='elephas',
       download_url = 'https://github.com/maxpumperla/elephas/tarball/0.1',
       author='Max Pumperla',
       author_email='max.pumperla@googlemail.com',
+      install_requires=['keras'],
       license='MIT',
       packages=['elephas'],
       zip_safe=False)
