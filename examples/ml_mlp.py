@@ -69,7 +69,7 @@ estimator = ElephasEstimator(sc,model,
 fitted_model = estimator.fit(df)
 
 # Evaluate Spark model by evaluating the underlying model
-prediction = fitted_model.transform(df)
+prediction = fitted_model.transform(test_df)
 pnl = prediction.select("label", "prediction")
 pnl.show(100)
 
