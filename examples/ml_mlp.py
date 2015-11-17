@@ -10,14 +10,15 @@ from keras.utils import np_utils
 
 from elephas.ml_model import ElephasEstimator, ElephasTransformer
 from elephas.ml.adapter import to_data_frame
+from elephas import optimizers as elephas_optimizers
 
 from pyspark import SparkContext, SparkConf
 from pyspark.mllib.evaluation import MulticlassMetrics
 
 # Define basic parameters
-batch_size = 128
+batch_size = 64
 nb_classes = 10
-nb_epoch = 20
+nb_epoch = 3
 
 # Load data
 (X_train, y_train), (X_test, y_test) = mnist.load_data()
@@ -36,18 +37,19 @@ Y_train = np_utils.to_categorical(y_train, nb_classes)
 Y_test = np_utils.to_categorical(y_test, nb_classes)
 
 model = Sequential()
-model.add(Dense(784, 128))
+model.add(Dense(128, input_dim=784))
 model.add(Activation('relu'))
 model.add(Dropout(0.2))
-model.add(Dense(128, 128))
+model.add(Dense(128))
 model.add(Activation('relu'))
 model.add(Dropout(0.2))
-model.add(Dense(128, 10))
+model.add(Dense(10))
 model.add(Activation('softmax'))
 
+
 # Compile model
-rms = RMSprop()
-model.compile(loss='categorical_crossentropy', optimizer=rms)
+adam = Adam()
+model.compile(loss='categorical_crossentropy', optimizer=adam)
 
 # Create Spark context
 conf = SparkConf().setAppName('Mnist_Spark_MLP').setMaster('local[8]')
@@ -58,8 +60,10 @@ df = to_data_frame(sc, X_train, Y_train, categorical=True)
 test_df = to_data_frame(sc, X_test, Y_test, categorical=True)
 
 # Initialize Spark ML Estimator
-estimator = ElephasEstimator(sc,model, nb_epoch=nb_epoch, batch_size=batch_size, 
-        verbose=0, validation_split=0.1, num_workers=8, categorical=True, nb_classes=nb_classes)
+adadelta = elephas_optimizers.Adadelta()
+estimator = ElephasEstimator(sc,model, 
+        nb_epoch=nb_epoch, batch_size=batch_size, optimizer=adadelta, frequency='batch', mode='asynchronous', num_workers=2,
+        verbose=0, validation_split=0.1, categorical=True, nb_classes=nb_classes)
 
 # Fitting a model returns a Transformer
 fitted_model = estimator.fit(df)
