@@ -115,6 +115,8 @@ class SparkModel(object):
         return self.master_network.predict(data)
 
     def train(self, rdd, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1):
+
+        rdd = rdd.repartition(self.num_workers)
         if self.mode in ['asynchronous', 'synchronous', 'hogwild']:
             self._train(rdd, nb_epoch, batch_size, verbose, validation_split)
         else:
@@ -126,7 +128,6 @@ class SparkModel(object):
 
         init = self.master_network.get_weights()
 
-        rdd = rdd.repartition(self.num_workers)
         yaml = self.master_network.to_yaml()
         train_config = self.get_train_config(nb_epoch, batch_size, verbose, validation_split)
 
@@ -220,7 +221,8 @@ class AsynchronousSparkWorker(object):
 class SparkMLlibModel(SparkModel):
     def train(self, labeled_points, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1, categorical=False, nb_classes=None):
         rdd = lp_to_simple_rdd(labeled_points, categorical, nb_classes)
-        self.train_rdd(rdd, nb_epoch, batch_size, verbose, validation_split)
+        rdd = rdd.repartition(self.num_workers)
+        self._train(rdd, nb_epoch, batch_size, verbose, validation_split)
 
     def predict(mllib_data):
         if isinstance(mllib_data, Matrix):

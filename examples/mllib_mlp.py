@@ -9,14 +9,15 @@ from keras.optimizers import SGD, Adam, RMSprop
 from keras.utils import np_utils
 
 from elephas.spark_model import SparkMLlibModel
-from elephas.utils.rdd_utils import to_labeled_point
+from elephas.utils.rdd_utils import to_labeled_point, lp_to_simple_rdd
+from elephas import optimizers as elephas_optimizers
 
 from pyspark import SparkContext, SparkConf
 
 # Define basic parameters
-batch_size = 128
+batch_size = 64
 nb_classes = 10
-nb_epoch = 20
+nb_epoch = 3
 
 # Load data
 (X_train, y_train), (X_test, y_test) = mnist.load_data()
@@ -35,13 +36,13 @@ Y_train = np_utils.to_categorical(y_train, nb_classes)
 Y_test = np_utils.to_categorical(y_test, nb_classes)
 
 model = Sequential()
-model.add(Dense(784, 128))
+model.add(Dense(128, input_dim=784))
 model.add(Activation('relu'))
 model.add(Dropout(0.2))
-model.add(Dense(128, 128))
+model.add(Dense(128))
 model.add(Activation('relu'))
 model.add(Dropout(0.2))
-model.add(Dense(128, 10))
+model.add(Dense(10))
 model.add(Activation('softmax'))
 
 # Compile model
@@ -54,12 +55,17 @@ sc = SparkContext(conf=conf)
 
 # Build RDD from numpy features and labels
 lp_rdd = to_labeled_point(sc, X_train, Y_train, categorical=True)
+print(lp_rdd.first())
+rdd = lp_to_simple_rdd(lp_rdd, True, nb_classes)
+rdd = rdd.repartition(4)
+rdd.first()
 
 # Initialize SparkModel from Keras model and Spark context
-spark_model = SparkMLlibModel(sc,model)
+adadelta = elephas_optimizers.Adadelta()
+spark_model = SparkMLlibModel(sc,model, optimizer=adadelta, frequency='batch', mode='asynchronous', num_workers=2)
 
 # Train Spark model
-spark_model.train(lp_rdd, nb_epoch=20, batch_size=32, verbose=0, validation_split=0.1, num_workers=8, categorical=True, nb_classes=nb_classes)
+spark_model.train(lp_rdd, nb_epoch=20, batch_size=32, verbose=0, validation_split=0.1, categorical=True, nb_classes=nb_classes)
 
 # Evaluate Spark model by evaluating the underlying model
 score = spark_model.get_network().evaluate(X_test, Y_test, show_accuracy=True, verbose=2)
