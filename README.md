@@ -1,4 +1,6 @@
-# Elephas: Keras Deep Learning on Apache Spark
+# Elephas: Distributed Deep Learning with Keras & Spark
+
+![Elephas](elephas.gif)
 
 ## Introduction
 Elephas brings deep learning with [Keras](http://keras.io) to [Apache Spark](http://spark.apache.org). Elephas intends to keep the simplicity and usability of Keras, allowing for fast prototyping of distributed models to run on large data sets.
@@ -6,9 +8,6 @@ Elephas brings deep learning with [Keras](http://keras.io) to [Apache Spark](htt
 ἐλέφας is Greek for _ivory_ and an accompanying project to κέρας, meaning _horn_. If this seems weird mentioning, like a bad dream, you should confirm it actually is at the [Keras documentation](https://github.com/fchollet/keras/blob/master/README.md). Elephas also means _elephant_, as in stuffed yellow elephant.
 
 Elephas implements a class of data-parallel algorithms on top of Keras, using Spark's RDDs and data frames. Keras Models are initialized on the driver, then serialized and shipped to workers, alongside with data and broadcasted model parameters. Spark workers deserialize the model, train their chunk of data and send their gradients back to the driver. The "master" model on the driver is updated by an optimizer, which takes gradients either synchronously or asynchronously.
-
-![](elephas.gif)
-
 
 ## Getting started
 
@@ -126,11 +125,13 @@ So, apart from the canonical Spark context and Keras model, Elephas models have 
 ### Model updates (optimizers)
 
 The optimizers module in elephas is an adaption of the same module in keras, i.e. it provides the user with the following list of optimizers:
+
 - SGD
 - RMSprop
 - Adagrad
 - Adadelta
 - Adam
+
 Once constructed, each of these can be passed to the *optimizer* parameter of the model. Updates in keras are computed with the help of theano, so most of the data structures in keras optimizers stem from theano. In elephas, gradients have already been computed by the respective workers, so it makes sense to entirely work with numpy arrays internally. 
 
 Note that in order to set up an elephas model, you have to specify two optimizers, one for elephas and one for the underlying keras model. Individual workers produce updates according to keras optimizers and the "master" model on the driver uses elephas optimizers to aggregate them. For starters, we recommend keras models with SGD and elephas models with Adagrad or Adadelta.
@@ -179,5 +180,7 @@ Constructive feedback and pull requests for elephas are very welcome. Here's a f
 
 ## Literature
 [1] J. Dean, G.S. Corrado, R. Monga, K. Chen, M. Devin, QV. Le, MZ. Mao, M’A. Ranzato, A. Senior, P. Tucker, K. Yang, and AY. Ng. [Large Scale Distributed Deep Networks](http://research.google.com/archive/large_deep_networks_nips2012.html).
+
 [2] F. Niu, B. Recht, C. Re, S.J. Wright [HOGWILD!: A Lock-Free Approach to Parallelizing Stochastic Gradient Descent](http://arxiv.org/abs/1106.5730)
+
 [3] C. Noel, S. Osindero. [Dogwild! — Distributed Hogwild for CPU & GPU](http://stanford.edu/~rezab/nips2014workshop/submits/dogwild.pdf)
