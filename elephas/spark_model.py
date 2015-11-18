@@ -111,7 +111,7 @@ class SparkModel(object):
         print 'Listening to localhost:5000...'
         self.app.run(host='0.0.0.0', debug=True, threaded=True, use_reloader=False)
 
-    def predict(data):
+    def predict(self,data):
         return self.master_network.predict(data)
 
     def train(self, rdd, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1):
