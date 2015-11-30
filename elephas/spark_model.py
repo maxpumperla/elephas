@@ -114,6 +114,9 @@ class SparkModel(object):
     def predict(self,data):
         return self.master_network.predict(data)
 
+    def predict_classes(self,data):
+        return self.master_network.predict_classes(data)
+
     def train(self, rdd, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1):
 
         rdd = rdd.repartition(self.num_workers)
