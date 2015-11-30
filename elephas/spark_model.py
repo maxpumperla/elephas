@@ -181,6 +181,9 @@ class AsynchronousSparkWorker(object):
         X_train = np.asarray([x for x,y in feature_iterator])
         y_train = np.asarray([y for x,y in label_iterator])
 
+        if len(X_train) == 0:
+            return
+
         model = model_from_yaml(self.yaml)
 
         nb_epoch = self.train_config['nb_epoch']
