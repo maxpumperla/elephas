@@ -8,7 +8,6 @@ import theano
 import theano.tensor as T
 import numpy as np
 
-from keras.utils.theano_utils import shared_zeros, shared_scalar, floatX
 from six.moves import zip
 
 def clip_norm(g, c, n):
@@ -31,7 +30,7 @@ class Optimizer(object):
     def set_state(self, value_list):
         assert len(self.updates) == len(value_list)
         for u, v in zip(self.updates, value_list):
-            u[0].set_value(floatX(v))
+            u[0].set_value(v)
 
     def get_updates(self, params, constraints, grads):
         raise NotImplementedError
