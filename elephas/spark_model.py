@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import print_function
 
 import numpy as np
 import sys
@@ -13,8 +14,12 @@ from multiprocessing import Process
 import six.moves.cPickle as pickle
 from six.moves import range
 from flask import Flask, request
-import urllib2
-import urlparse
+try:
+    import urllib.request as urllib2
+    from urllib.parse import urlparse
+except ImportError:
+    import urllib2
+    import urlparse
 
 from .utils.rwlock import RWLock
 from .utils.functional_utils import add_params, subtract_params, get_neutral
@@ -108,7 +113,7 @@ class SparkModel(object):
                 self.lock.release()
             return 'Update done'
 
-        print 'Listening to localhost:5000...'
+        print('Listening to localhost:5000...')
         self.app.run(host='0.0.0.0', debug=True, threaded=True, use_reloader=False)
 
     def predict(self,data):
@@ -123,7 +128,7 @@ class SparkModel(object):
         if self.mode in ['asynchronous', 'synchronous', 'hogwild']:
             self._train(rdd, nb_epoch, batch_size, verbose, validation_split)
         else:
-            print 'Choose from one of the three available modes: asynchronous, synchronous or hogwild'
+            print('Choose from one of the three available modes: asynchronous, synchronous or hogwild')
 
     def _train(self, rdd, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1):
         if self.mode in ['asynchronous', 'hogwild']:
@@ -220,7 +225,7 @@ class AsynchronousSparkWorker(object):
                         deltas = subtract_params(weights_before_training, weights_after_training)
                         put_deltas_to_server(deltas)
         else: 
-            print 'Choose frequency to be either batch or epoch'
+            print('Choose frequency to be either batch or epoch')
         yield []
 
 
@@ -236,4 +241,5 @@ class SparkMLlibModel(SparkModel):
         elif isinstance(mllib_data, Vector):
             return to_vector(self.master_network.predict(from_vector(mllib_data)))
         else:
-            print 'Provide either an MLLib matrix or vector'
+            print('Provide either an MLLib matrix or vector')
+
