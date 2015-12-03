@@ -27,14 +27,12 @@ from .utils.rdd_utils import lp_to_simple_rdd
 from .mllib.adapter import to_matrix, from_matrix, to_vector, from_vector
 
 
-def get_server_weights(master='localhost:5000'):
-    request = urllib2.Request('http://%s/parameters' % master,
-        headers={'Content-Type': 'application/elephas'})
+def get_server_weights(master_url='localhost:5000'):
+    request = urllib2.Request('http://%s/parameters' % master_url, headers={'Content-Type': 'application/elephas'})
     return pickle.loads(urllib2.urlopen(request).read())
 
-def put_deltas_to_server(delta, master='localhost:5000'):
-    request = urllib2.Request('http://%s/update' % master, pickle.dumps(delta, -1),
-        headers={'Content-Type': 'application/elephas'})
+def put_deltas_to_server(delta, master_url='localhost:5000'):
+    request = urllib2.Request('http://%s/update' % master_url, pickle.dumps(delta, -1), headers={'Content-Type': 'application/elephas'})
     return urllib2.urlopen(request).read()
 
 
@@ -53,6 +51,16 @@ class SparkModel(object):
         self.weights = master_network.get_weights()
         self.pickled_weights = None
         self.lock = RWLock()
+
+    def determine_master(self, master):
+        if master.startswith('local['):
+            master_url = 'localhost:5000'
+        else:
+            if master.startswith('spark://'):
+                master_url = '%s:5000' % urlparse.urlparse(master).netloc.split(':')[0]
+            else:
+                master_url = '%s:5000' % master.split(':')[0]
+        return master_url
 
     def get_train_config(self, nb_epoch, batch_size, verbose, validation_split):
         train_config = {}
@@ -113,7 +121,6 @@ class SparkModel(object):
                 self.lock.release()
             return 'Update done'
 
-        print('Listening to localhost:5000...')
         self.app.run(host='0.0.0.0', debug=True, threaded=True, use_reloader=False)
 
     def predict(self,data):
@@ -125,24 +132,25 @@ class SparkModel(object):
     def train(self, rdd, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1):
 
         rdd = rdd.repartition(self.num_workers)
+        master_url = self.determine_master(rdd.ctx._conf.get('spark.master'))
+
         if self.mode in ['asynchronous', 'synchronous', 'hogwild']:
-            self._train(rdd, nb_epoch, batch_size, verbose, validation_split)
+            self._train(rdd, nb_epoch, batch_size, verbose, validation_split, master_url)
         else:
             print('Choose from one of the three available modes: asynchronous, synchronous or hogwild')
 
-    def _train(self, rdd, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1):
+    def _train(self, rdd, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1, master_url='localhost:5000'):
         if self.mode in ['asynchronous', 'hogwild']:
             self.start_server()
 
         init = self.master_network.get_weights()
-
         yaml = self.master_network.to_yaml()
         train_config = self.get_train_config(nb_epoch, batch_size, verbose, validation_split)
 
         if self.mode in ['asynchronous', 'hogwild']:
-            worker = AsynchronousSparkWorker(yaml, train_config, self.frequency)
-            resultsi = rdd.mapPartitions(worker.train).collect()
-            new_parameters = get_server_weights()
+            worker = AsynchronousSparkWorker(yaml, train_config, self.frequency, master_url)
+            results = rdd.mapPartitions(worker.train).collect()
+            new_parameters = get_server_weights(master_url)
         elif self.mode == 'synchronous':
             parameters = self.spark_context.broadcast(self.master_network.get_weights())
             worker = SparkWorker(yaml, parameters, train_config)
@@ -179,10 +187,11 @@ class SparkWorker(object):
 
 
 class AsynchronousSparkWorker(object):
-    def __init__(self, yaml, train_config, frequency):
+    def __init__(self, yaml, train_config, frequency, master_url):
         self.yaml = yaml
         self.train_config = train_config
         self.frequency = frequency
+        self.master_url = master_url
 
     def train(self, data_iterator):
         feature_iterator, label_iterator = tee(data_iterator,2)
@@ -203,19 +212,19 @@ class AsynchronousSparkWorker(object):
 
         if self.frequency == 'epoch':
             for epoch in range(nb_epoch):
-                weights_before_training = get_server_weights()
+                weights_before_training = get_server_weights(self.master_url)
                 model.set_weights(weights_before_training)
                 self.train_config['nb_epoch'] = 1
                 if X_train.shape[0] > batch_size:
                     model.fit(X_train, y_train, show_accuracy=True, **self.train_config)
                 weights_after_training = model.get_weights()
                 deltas = subtract_params(weights_before_training, weights_after_training)
-                put_deltas_to_server(deltas)
+                put_deltas_to_server(deltas, master_url)
         elif self.frequency == 'batch':
             for epoch in range(nb_epoch):
                 if X_train.shape[0] > batch_size:
                     for (batch_start, batch_end) in batches:
-                        weights_before_training = get_server_weights()
+                        weights_before_training = get_server_weights(self.master_url)
                         model.set_weights(weights_before_training)
                         batch_ids = index_array[batch_start:batch_end]
                         X = slice_X(X_train, batch_ids)
@@ -223,8 +232,8 @@ class AsynchronousSparkWorker(object):
                         model.train_on_batch(X,y)
                         weights_after_training = model.get_weights()
                         deltas = subtract_params(weights_before_training, weights_after_training)
-                        put_deltas_to_server(deltas)
-        else: 
+                        put_deltas_to_server(deltas, master_url)
+        else:
             print('Choose frequency to be either batch or epoch')
         yield []
 
@@ -242,4 +251,3 @@ class SparkMLlibModel(SparkModel):
             return to_vector(self.master_network.predict(from_vector(mllib_data)))
         else:
             print('Provide either an MLLib matrix or vector')
-
