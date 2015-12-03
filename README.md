@@ -1,9 +1,11 @@
-# Elephas: Distributed Deep Learning with Keras & Spark
+# Elephas: Distributed Deep Learning with Keras & Spark [![Build Status](https://travis-ci.org/maxpumperla/elephas.svg?branch=master)](https://travis-ci.org/maxpumperla/elephas)
+
+Elephas is an extension of [Keras](http://keras.io), which allows you run distributed deep learning models at scale with [ Spark](http://spark.apache.org). Schematically, elephas works as follows.
 
 ![Elephas](elephas.gif)
 
 ## Introduction
-Elephas brings deep learning with [Keras](http://keras.io) to [Apache Spark](http://spark.apache.org). Elephas intends to keep the simplicity and usability of Keras, allowing for fast prototyping of distributed models to run on large data sets.
+Elephas brings deep learning with [Keras](http://keras.io) to [Spark](http://spark.apache.org). Elephas intends to keep the simplicity and high usability of Keras, thereby allowing for fast prototyping of distributed models, which can be run on massive data sets.
 
 ἐλέφας is Greek for _ivory_ and an accompanying project to κέρας, meaning _horn_. If this seems weird mentioning, like a bad dream, you should confirm it actually is at the [Keras documentation](https://github.com/fchollet/keras/blob/master/README.md). Elephas also means _elephant_, as in stuffed yellow elephant.
 
@@ -16,15 +18,28 @@ Install elephas from PyPI with
 ```
 pip install elephas
 ```
-A quick way to install Spark locally is to use homebrew on Mac 
+A quick way to install Spark locally is to use homebrew on Mac like this
 ```
 brew install spark
 ```
-or linuxbrew on linux
+or linuxbrew on linux.
 ```
 brew install apache-spark
 ```
-If this is not an option, you should simply follow the instructions at the [Spark download section](http://spark.apache.org/downloads.html). 
+The brew version of Spark is outdated, so we recommend installing Spark as follows:
+```
+wget http://apache.mirrors.tds.net/spark/spark-1.5.2/spark-1.5.2-bin-hadoop2.6.tgz
+1.5.2-bin-hadoop2.6.tgz -P ~
+sudo tar zxvf ~/spark-* -C /usr/local
+sudo mv /usr/local/spark-* /usr/local/spark 
+```
+After that, make sure to put these path variables to your shell profile (e.g. `~/.zshrc`):
+```
+export SPARK_HOME=/usr/local/spark
+export PATH=$PATH:$SPARK_HOME/bin
+```
+
+If this is not an option, you should simply follow the instructions at the [Spark download section](http://spark.apache.org/downloads.html).  
 
 ### Basic example
 After installing both Elephas and Spark, training a model is done schematically as follows:
@@ -124,13 +139,13 @@ So, apart from the canonical Spark context and Keras model, Elephas models have 
 
 ### Model updates (optimizers)
 
-The optimizers module in elephas is an adaption of the same module in keras, i.e. it provides the user with the following list of optimizers:
+`optimizer`: The optimizers module in elephas is an adaption of the same module in keras, i.e. it provides the user with the following list of optimizers:
 
-- SGD
-- RMSprop
-- Adagrad
-- Adadelta
-- Adam
+- `SGD`
+- `RMSprop`
+- `Adagrad`
+- `Adadelta`
+- `Adam`
 
 Once constructed, each of these can be passed to the *optimizer* parameter of the model. Updates in keras are computed with the help of theano, so most of the data structures in keras optimizers stem from theano. In elephas, gradients have already been computed by the respective workers, so it makes sense to entirely work with numpy arrays internally. 
 
@@ -138,26 +153,26 @@ Note that in order to set up an elephas model, you have to specify two optimizer
 
 ### Update frequency
 
-The user can decide how often updates are passed to the master model by controlling the *frequency* parameter. To update every batch, choose 'batch' and to update only after every epoch, choose 'epoch'.
+`frequency`: The user can decide how often updates are passed to the master model by controlling the *frequency* parameter. To update every batch, choose 'batch' and to update only after every epoch, choose 'epoch'.
 
 ### Update mode
 
-Currently, there's three different modes available in elephas, each corresponding to a different heuristic or parallelization scheme adopted, which is controlled by the *mode* parameter. The default property is 'asynchronous'.
+`mode`: Currently, there's three different modes available in elephas, each corresponding to a different heuristic or parallelization scheme adopted, which is controlled by the *mode* parameter. The default property is 'asynchronous'.
 
-#### Asynchronous updates with read and write locks (mode='asynchronous')
+#### Asynchronous updates with read and write locks (`mode='asynchronous'`)
 
 This mode implements the algorithm described as *downpour* in [1], i.e. each worker can send updates whenever they are ready. The master model makes sure that no update gets lost, i.e. multiple updates get applied at the "same" time,  by locking the master parameters while reading and writing parameters. This idea has been used in Google's DistBelief framework. 
 
-#### Asynchronous updates without locks (mode='hogwild')
+#### Asynchronous updates without locks (`mode='hogwild'`)
 Essentially the same procedure as above, but without requiring the locks. This heuristic assumes that we still fare well enough, even if we loose an update here or there. Updating parameters lock-free in a non-distributed setting for SGD goes by the name 'Hogwild!' [2], it's distributed extension is called 'Dogwild!' [3].  
 
-#### Synchronous updates (mode='synchronous')
+#### Synchronous updates (`mode='synchronous'`)
 
-In this mode each worker sends a new batch of parameter updates at the same time, which are then processed on the master. Accordingly, this algorithm is sometimes called *batch synchronous parallel*.
+In this mode each worker sends a new batch of parameter updates at the same time, which are then processed on the master. Accordingly, this algorithm is sometimes called *batch synchronous parallel* or just BSP.
 
 ### Degree of parallelization (number of workers)
 
-Lastly, the degree to which we parallelize our training data is controlled by the parameter *num_workers*.
+`num_workers`: Lastly, the degree to which we parallelize our training data is controlled by the parameter *num_workers*.
 
 ## Discussion
 
