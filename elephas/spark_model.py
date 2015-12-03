@@ -219,7 +219,7 @@ class AsynchronousSparkWorker(object):
                     model.fit(X_train, y_train, show_accuracy=True, **self.train_config)
                 weights_after_training = model.get_weights()
                 deltas = subtract_params(weights_before_training, weights_after_training)
-                put_deltas_to_server(deltas, master_url)
+                put_deltas_to_server(deltas, self.master_url)
         elif self.frequency == 'batch':
             for epoch in range(nb_epoch):
                 if X_train.shape[0] > batch_size:
@@ -232,7 +232,7 @@ class AsynchronousSparkWorker(object):
                         model.train_on_batch(X,y)
                         weights_after_training = model.get_weights()
                         deltas = subtract_params(weights_before_training, weights_after_training)
-                        put_deltas_to_server(deltas, master_url)
+                        put_deltas_to_server(deltas, self.master_url)
         else:
             print('Choose frequency to be either batch or epoch')
         yield []
