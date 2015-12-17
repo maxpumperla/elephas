@@ -1,11 +1,10 @@
 from __future__ import absolute_import
 from __future__ import print_function
-import numpy as np
 
 from keras.datasets import mnist
 from keras.models import Sequential
 from keras.layers.core import Dense, Dropout, Activation
-from keras.optimizers import SGD, Adam, RMSprop
+from keras.optimizers import SGD
 from keras.utils import np_utils
 
 from elephas.spark_model import SparkModel
@@ -50,7 +49,7 @@ sgd = SGD(lr=0.1)
 model.compile(loss='categorical_crossentropy', optimizer=sgd)
 
 # Create Spark context
-conf = SparkConf().setAppName('Mnist_Spark_MLP').setMaster('local[8]')
+conf = SparkConf().setAppName('Mnist_Spark_MLP')
 sc = SparkContext(conf=conf)
 
 # Build RDD from numpy features and labels

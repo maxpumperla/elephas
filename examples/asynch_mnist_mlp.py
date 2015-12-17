@@ -1,11 +1,10 @@
 from __future__ import absolute_import
 from __future__ import print_function
-import numpy as np
 
 from keras.datasets import mnist
 from keras.models import Sequential
 from keras.layers.core import Dense, Dropout, Activation
-from keras.optimizers import SGD, Adam, RMSprop
+from keras.optimizers import RMSprop
 from keras.utils import np_utils
 
 from elephas.asynch_spark_model import AsynchSparkModel
@@ -54,16 +53,16 @@ sc = SparkContext(conf=conf)
 
 # Build RDD from numpy features and labels
 rdd = to_simple_rdd(sc, X_train, Y_train)
-#rdd = rdd.repartition(1)
 
 # Initialize AsynchSparkModel from Keras model and Spark context
-spark_model = AsynchSparkModel(sc,model)
+spark_model = AsynchSparkModel(sc, model)
 
 # Train Spark model
 print('Training model')
-spark_model.train(rdd, nb_epoch=20, batch_size=32, verbose=0, validation_split=0.1, num_workers=8)
+spark_model.train(rdd, nb_epoch=20, batch_size=32,
+                  verbose=0, validation_split=0.1, num_workers=8)
 
 # Evaluate Spark model by evaluating the underlying model
-score = spark_model.get_network().evaluate(X_test, Y_test, show_accuracy=True, verbose=2)
+score = spark_model.get_network().evaluate(X_test, Y_test,
+                                           show_accuracy=True, verbose=2)
 print('Test accuracy:', score[1])
-
