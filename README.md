@@ -28,8 +28,7 @@ brew install apache-spark
 ```
 The brew version of Spark is outdated, so we recommend installing Spark as follows:
 ```
-wget http://apache.mirrors.tds.net/spark/spark-1.5.2/spark-1.5.2-bin-hadoop2.6.tgz
-1.5.2-bin-hadoop2.6.tgz -P ~
+wget http://apache.mirrors.tds.net/spark/spark-1.5.2/spark-1.5.2-bin-hadoop2.6.tgz -P ~
 sudo tar zxvf ~/spark-* -C /usr/local
 sudo mv /usr/local/spark-* /usr/local/spark 
 ```
