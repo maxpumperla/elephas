@@ -49,7 +49,7 @@ sgd = SGD(lr=0.1)
 model.compile(loss='categorical_crossentropy', optimizer=sgd)
 
 # Create Spark context
-conf = SparkConf().setAppName('Mnist_Spark_MLP')
+conf = SparkConf().setAppName('Mnist_Spark_MLP')  # .setMaster('local[8]')
 sc = SparkContext(conf=conf)
 
 # Build RDD from numpy features and labels
@@ -57,12 +57,23 @@ rdd = to_simple_rdd(sc, X_train, Y_train)
 
 # Initialize SparkModel from Keras model and Spark context
 adagrad = elephas_optimizers.Adagrad()
-spark_model = SparkModel(sc,model, optimizer=adagrad, frequency='epoch', mode='asynchronous', num_workers=2)
+spark_model = SparkModel(sc,
+                         model,
+                         optimizer=adagrad,
+                         frequency='epoch',
+                         mode='asynchronous',
+                         num_workers=2)
 
 # Train Spark model
-spark_model.train(rdd, nb_epoch=nb_epoch, batch_size=batch_size, verbose=2, validation_split=0.1)
+spark_model.train(rdd,
+                  nb_epoch=nb_epoch,
+                  batch_size=batch_size,
+                  verbose=2,
+                  validation_split=0.1)
 
 # Evaluate Spark model by evaluating the underlying model
-score = spark_model.get_network().evaluate(X_test, Y_test, show_accuracy=True, verbose=2)
+score = spark_model.get_network().evaluate(X_test,
+                                           Y_test,
+                                           show_accuracy=True,
+                                           verbose=2)
 print('Test accuracy:', score[1])
-
