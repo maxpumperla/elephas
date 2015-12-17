@@ -2,45 +2,48 @@ from __future__ import absolute_import
 from __future__ import print_function
 
 import numpy as np
-import sys
 from itertools import tee
-from keras.models import Sequential, model_from_yaml, slice_X
-import theano
-import theano.tensor as T
-from pyspark.rdd import RDD
+from keras.models import model_from_yaml, slice_X
 
-from threading import Thread
+import socket
 from multiprocessing import Process
 import six.moves.cPickle as pickle
 from six.moves import range
 from flask import Flask, request
 try:
     import urllib.request as urllib2
-    from urllib.parse import urlparse
+    # from urllib.parse import urlparse
 except ImportError:
     import urllib2
-    import urlparse
+    # import urlparse
+from pyspark.mllib.linalg import Matrix, Vector
 
 from .utils.rwlock import RWLock
-from .utils.functional_utils import add_params, subtract_params, get_neutral
+from .utils.functional_utils import subtract_params
 from .utils.rdd_utils import lp_to_simple_rdd
 from .mllib.adapter import to_matrix, from_matrix, to_vector, from_vector
 
 
 def get_server_weights(master_url='localhost:5000'):
-    request = urllib2.Request('http://%s/parameters' % master_url, headers={'Content-Type': 'application/elephas'})
+    request = urllib2.Request('http://%s/parameters' % master_url,
+                              headers={'Content-Type': 'application/elephas'})
     return pickle.loads(urllib2.urlopen(request).read())
 
+
 def put_deltas_to_server(delta, master_url='localhost:5000'):
-    request = urllib2.Request('http://%s/update' % master_url, pickle.dumps(delta, -1), headers={'Content-Type': 'application/elephas'})
+    request = urllib2.Request('http://%s/update' % master_url,
+                              pickle.dumps(delta, -1),
+                              headers={'Content-Type': 'application/elephas'})
     return urllib2.urlopen(request).read()
 
 
 class SparkModel(object):
-    def __init__(self, sc, master_network, optimizer=None, mode='asynchronous', frequency='epoch', num_workers=4,  *args, **kwargs):
+    def __init__(self, sc, master_network, optimizer=None,
+                 mode='asynchronous', frequency='epoch',
+                 num_workers=4,  *args, **kwargs):
         self.spark_context = sc
         self.master_network = master_network
-        if optimizer == None:
+        if optimizer is None:
             self.optimizer = master_network.optimizer
         else:
             self.optimizer = optimizer
@@ -53,16 +56,11 @@ class SparkModel(object):
         self.lock = RWLock()
 
     def determine_master(self, master):
-        if master.startswith('local['):
-            master_url = 'localhost:5000'
-        else:
-            if master.startswith('spark://'):
-                master_url = '%s:5000' % urlparse.urlparse(master).netloc.split(':')[0]
-            else:
-                master_url = '%s:5000' % master.split(':')[0]
+        master_url = socket.gethostbyname(socket.gethostname()) + ':5000'
         return master_url
 
-    def get_train_config(self, nb_epoch, batch_size, verbose, validation_split):
+    def get_train_config(self, nb_epoch, batch_size,
+                         verbose, validation_split):
         train_config = {}
         train_config['nb_epoch'] = nb_epoch
         train_config['batch_size'] = batch_size
@@ -116,48 +114,63 @@ class SparkModel(object):
             delta = pickle.loads(request.data)
             if self.mode == 'asynchronous':
                 self.lock.acquire_write()
-            self.weights = self.optimizer.get_updates(self.weights, self.master_network.constraints, delta)
+            constraints = self.master_network.constraints
+            self.weights = self.optimizer.get_updates(self.weights,
+                                                      constraints,
+                                                      delta)
             if self.mode == 'asynchronous':
                 self.lock.release()
             return 'Update done'
 
-        self.app.run(host='0.0.0.0', debug=True, threaded=True, use_reloader=False)
+        self.app.run(host='0.0.0.0', debug=True,
+                     threaded=True, use_reloader=False)
 
-    def predict(self,data):
+    def predict(self, data):
         return self.master_network.predict(data)
 
-    def predict_classes(self,data):
+    def predict_classes(self, data):
         return self.master_network.predict_classes(data)
 
-    def train(self, rdd, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1):
+    def train(self, rdd, nb_epoch=10, batch_size=32,
+              verbose=0, validation_split=0.1):
 
         rdd = rdd.repartition(self.num_workers)
         master_url = self.determine_master(rdd.ctx._conf.get('spark.master'))
 
         if self.mode in ['asynchronous', 'synchronous', 'hogwild']:
-            self._train(rdd, nb_epoch, batch_size, verbose, validation_split, master_url)
+            self._train(rdd, nb_epoch, batch_size,
+                        verbose, validation_split, master_url)
         else:
-            print('Choose from one of the three available modes: asynchronous, synchronous or hogwild')
+            print("""Choose from one of the modes: \
+                    asynchronous, synchronous or hogwild""")
 
-    def _train(self, rdd, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1, master_url='localhost:5000'):
+    def _train(self, rdd, nb_epoch=10, batch_size=32, verbose=0,
+               validation_split=0.1, master_url='localhost:5000'):
         if self.mode in ['asynchronous', 'hogwild']:
             self.start_server()
 
-        init = self.master_network.get_weights()
         yaml = self.master_network.to_yaml()
-        train_config = self.get_train_config(nb_epoch, batch_size, verbose, validation_split)
+        train_config = self.get_train_config(nb_epoch, batch_size,
+                                             verbose, validation_split)
 
         if self.mode in ['asynchronous', 'hogwild']:
-            worker = AsynchronousSparkWorker(yaml, train_config, self.frequency, master_url)
-            results = rdd.mapPartitions(worker.train).collect()
+            worker = AsynchronousSparkWorker(yaml,
+                                             train_config,
+                                             self.frequency,
+                                             master_url)
+            rdd.mapPartitions(worker.train).collect()
             new_parameters = get_server_weights(master_url)
         elif self.mode == 'synchronous':
-            parameters = self.spark_context.broadcast(self.master_network.get_weights())
+            init = self.master_network.get_weights()
+            parameters = self.spark_context.broadcast(init)
             worker = SparkWorker(yaml, parameters, train_config)
             deltas = rdd.mapPartitions(worker.train).collect()
             new_parameters = self.master_network.get_weights()
             for delta in deltas:
-                new_parameters = self.optimizer.get_updates(self.weights, self.master_network.constraints, delta)
+                constraints = self.master_network.constraints
+                new_parameters = self.optimizer.get_updates(self.weights,
+                                                            constraints,
+                                                            delta)
         self.master_network.set_weights(new_parameters)
 
         if self.mode in ['asynchronous', 'hogwild']:
@@ -172,17 +185,19 @@ class SparkWorker(object):
 
     def train(self, data_iterator):
 
-        feature_iterator, label_iterator = tee(data_iterator,2)
-        X_train = np.asarray([x for x,y in feature_iterator])
-        y_train = np.asarray([y for x,y in label_iterator])
+        feature_iterator, label_iterator = tee(data_iterator, 2)
+        X_train = np.asarray([x for x, y in feature_iterator])
+        y_train = np.asarray([y for x, y in label_iterator])
 
         model = model_from_yaml(self.yaml)
         model.set_weights(self.parameters.value)
         weights_before_training = model.get_weights()
         if X_train.shape[0] > self.train_config.get('batch_size'):
-            model.fit(X_train, y_train, show_accuracy=True, **self.train_config)
+            model.fit(X_train, y_train,
+                      show_accuracy=True, **self.train_config)
         weights_after_training = model.get_weights()
-        deltas = subtract_params(weights_before_training, weights_after_training)
+        deltas = subtract_params(weights_before_training,
+                                 weights_after_training)
         yield deltas
 
 
@@ -194,9 +209,9 @@ class AsynchronousSparkWorker(object):
         self.master_url = master_url
 
     def train(self, data_iterator):
-        feature_iterator, label_iterator = tee(data_iterator,2)
-        X_train = np.asarray([x for x,y in feature_iterator])
-        y_train = np.asarray([y for x,y in label_iterator])
+        feature_iterator, label_iterator = tee(data_iterator, 2)
+        X_train = np.asarray([x for x, y in feature_iterator])
+        y_train = np.asarray([y for x, y in label_iterator])
 
         if len(X_train) == 0:
             return
@@ -216,9 +231,11 @@ class AsynchronousSparkWorker(object):
                 model.set_weights(weights_before_training)
                 self.train_config['nb_epoch'] = 1
                 if X_train.shape[0] > batch_size:
-                    model.fit(X_train, y_train, show_accuracy=True, **self.train_config)
+                    model.fit(X_train, y_train,
+                              show_accuracy=True, **self.train_config)
                 weights_after_training = model.get_weights()
-                deltas = subtract_params(weights_before_training, weights_after_training)
+                deltas = subtract_params(weights_before_training,
+                                         weights_after_training)
                 put_deltas_to_server(deltas, self.master_url)
         elif self.frequency == 'batch':
             for epoch in range(nb_epoch):
@@ -229,9 +246,10 @@ class AsynchronousSparkWorker(object):
                         batch_ids = index_array[batch_start:batch_end]
                         X = slice_X(X_train, batch_ids)
                         y = slice_X(y_train, batch_ids)
-                        model.train_on_batch(X,y)
+                        model.train_on_batch(X, y)
                         weights_after_training = model.get_weights()
-                        deltas = subtract_params(weights_before_training, weights_after_training)
+                        deltas = subtract_params(weights_before_training,
+                                                 weights_after_training)
                         put_deltas_to_server(deltas, self.master_url)
         else:
             print('Choose frequency to be either batch or epoch')
@@ -239,12 +257,17 @@ class AsynchronousSparkWorker(object):
 
 
 class SparkMLlibModel(SparkModel):
-    def train(self, labeled_points, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1, categorical=False, nb_classes=None):
+    def __init__(self, **kwargs):
+        super(SparkModel, self).__init__(**kwargs)
+
+    def train(self, labeled_points, nb_epoch=10,
+              batch_size=32, verbose=0, validation_split=0.1,
+              categorical=False, nb_classes=None):
         rdd = lp_to_simple_rdd(labeled_points, categorical, nb_classes)
         rdd = rdd.repartition(self.num_workers)
         self._train(rdd, nb_epoch, batch_size, verbose, validation_split)
 
-    def predict(mllib_data):
+    def predict(self, mllib_data):
         if isinstance(mllib_data, Matrix):
             return to_matrix(self.master_network.predict(from_matrix(mllib_data)))
         elif isinstance(mllib_data, Vector):

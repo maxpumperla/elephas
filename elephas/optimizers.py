@@ -1,22 +1,24 @@
 '''
 This is essentially a copy of keras' optimizers.py.
-We have to modify the base class 'Optimizer' here, 
-as the gradients will be provided by the Spark workers, not Theano.
+We have to modify the base class 'Optimizer' here,
+as the gradients will be provided by the Spark workers,
+not by one of the backends (Theano or Tensorflow).
 '''
 from __future__ import absolute_import
-import theano
-import theano.tensor as T
+from keras import backend as K
 import numpy as np
 
 from six.moves import zip
 
+
 def clip_norm(g, c, n):
     if c > 0:
-        g = T.switch(T.ge(n, c), g * c / n, g)
+        g = K.switch(K.ge(n, c), g * c / n, g)
     return g
 
+
 def kl_divergence(p, p_hat):
-    return p_hat - p + p * T.log(p / p_hat)
+    return p_hat - p + p * K.log(p / p_hat)
 
 
 class Optimizer(object):
@@ -38,20 +40,21 @@ class Optimizer(object):
     def get_gradients(self, grads, params):
 
         if hasattr(self, 'clipnorm') and self.clipnorm > 0:
-            norm = T.sqrt(sum([T.sum(g ** 2) for g in grads]))
+            norm = K.sqrt(sum([K.sum(g ** 2) for g in grads]))
             grads = [clip_norm(g, self.clipnorm, norm) for g in grads]
 
         if hasattr(self, 'clipvalue') and self.clipvalue > 0:
-            grads = [T.clip(g, -self.clipvalue, self.clipvalue) for g in grads]
+            grads = [K.clip(g, -self.clipvalue, self.clipvalue) for g in grads]
 
-        return theano.shared(grads)
+        return K.shared(grads)
 
     def get_config(self):
         return {"name": self.__class__.__name__}
 
 
 class SGD(Optimizer):
-    def __init__(self, lr=0.01, momentum=0., decay=0., nesterov=False, *args, **kwargs):
+    def __init__(self, lr=0.01, momentum=0., decay=0.,
+                 nesterov=False, *args, **kwargs):
         super(SGD, self).__init__(**kwargs)
         self.__dict__.update(locals())
         self.iterations = 0
@@ -95,7 +98,7 @@ class RMSprop(Optimizer):
         new_weights = []
 
         for p, g, a, c in zip(params, grads, accumulators, constraints):
-            new_a = self.rho * a + (1 - self.rho) * g ** 2  # update accumulator
+            new_a = self.rho * a + (1 - self.rho) * g ** 2
             self.updates.append((a, new_a))
 
             new_p = p - self.lr * g / np.sqrt(new_a + self.epsilon)
@@ -149,16 +152,14 @@ class Adadelta(Optimizer):
 
         for p, g, a, d_a, c in zip(params, grads, accumulators,
                                    delta_accumulators, constraints):
-            new_a = self.rho * a + (1 - self.rho) * g ** 2  # update accumulator
+            new_a = self.rho * a + (1 - self.rho) * g ** 2
             self.updates.append((a, new_a))
             # use the new accumulator and the *old* delta_accumulator
-            update = g * np.sqrt(d_a + self.epsilon) / np.sqrt(new_a +
-                                                             self.epsilon)
+            div = np.sqrt(new_a + self.epsilon)
+            update = g * np.sqrt(d_a + self.epsilon) / div
             new_p = p - self.lr * update
             self.updates.append((p, c(new_p)))  # apply constraints
 
-            # update delta_accumulator
-            new_d_a = self.rho * d_a + (1 - self.rho) * update ** 2
             new_weights.append(new_p)
         return new_weights
 
@@ -174,7 +175,8 @@ class Adam(Optimizer):
         Reference: http://arxiv.org/abs/1412.6980v8
         Default parameters follow those provided in the original paper.
     '''
-    def __init__(self, lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-8, *args, **kwargs):
+    def __init__(self, lr=0.001, beta_1=0.9, beta_2=0.999,
+                 epsilon=1e-8, *args, **kwargs):
         super(Adam, self).__init__(**kwargs)
         self.__dict__.update(locals())
         self.iterations = 0
@@ -188,7 +190,7 @@ class Adam(Optimizer):
 
         for p, g, c in zip(params, grads, constraints):
             m = np.zeros_like(p)  # zero init of moment
-            v = np.zeros_like(p) # zero init of velocity
+            v = np.zeros_like(p)  # zero init of velocity
 
             m_t = (self.beta_1 * m) + (1 - self.beta_1) * g
             v_t = (self.beta_2 * v) + (1 - self.beta_2) * (g**2)
