@@ -14,6 +14,13 @@ Elephas implements a class of data-parallel algorithms on top of Keras, using Sp
 ## Getting started
 
 ### Installation
+Depending on what OS you are using, you may need to install some prerequisite modules (LAPACK, BLAS, fortran compiler) first.
+
+For example, on Ubuntu Linux:
+```
+sudo apt-get install liblapack-dev libblas-dev gfortran
+```
+
 Install elephas from PyPI with 
 ```
 pip install elephas
