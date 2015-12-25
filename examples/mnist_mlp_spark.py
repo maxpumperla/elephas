@@ -18,6 +18,10 @@ batch_size = 64
 nb_classes = 10
 nb_epoch = 3
 
+# Create Spark context
+conf = SparkConf().setAppName('Mnist_Spark_MLP')  # .setMaster('local[8]')
+sc = SparkContext(conf=conf)
+
 # Load data
 (X_train, y_train), (X_test, y_test) = mnist.load_data()
 
@@ -47,10 +51,6 @@ model.add(Activation('softmax'))
 # Compile model
 sgd = SGD(lr=0.1)
 model.compile(loss='categorical_crossentropy', optimizer=sgd)
-
-# Create Spark context
-conf = SparkConf().setAppName('Mnist_Spark_MLP')  # .setMaster('local[8]')
-sc = SparkContext(conf=conf)
 
 # Build RDD from numpy features and labels
 rdd = to_simple_rdd(sc, X_train, Y_train)
