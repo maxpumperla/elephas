@@ -99,8 +99,8 @@ class SparkModel(object):
         return self._master_network
 
     @master_network.setter
-    ''' Set master network '''
     def master_network(self, network):
+        ''' Set master network '''
         self._master_network = network
 
     def start_server(self):
