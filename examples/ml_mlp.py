@@ -20,20 +20,20 @@ nb_classes = 10
 nb_epoch = 3
 
 # Load data
-(X_train, y_train), (X_test, y_test) = mnist.load_data()
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
 
-X_train = X_train.reshape(60000, 784)
-X_test = X_test.reshape(10000, 784)
-X_train = X_train.astype("float32")
-X_test = X_test.astype("float32")
-X_train /= 255
-X_test /= 255
-print(X_train.shape[0], 'train samples')
-print(X_test.shape[0], 'test samples')
+x_train = x_train.reshape(60000, 784)
+x_test = x_test.reshape(10000, 784)
+x_train = x_train.astype("float32")
+x_test = x_test.astype("float32")
+x_train /= 255
+x_test /= 255
+print(x_train.shape[0], 'train samples')
+print(x_test.shape[0], 'test samples')
 
 # Convert class vectors to binary class matrices
-Y_train = np_utils.to_categorical(y_train, nb_classes)
-Y_test = np_utils.to_categorical(y_test, nb_classes)
+y_train = np_utils.to_categorical(y_train, nb_classes)
+y_test = np_utils.to_categorical(y_test, nb_classes)
 
 model = Sequential()
 model.add(Dense(128, input_dim=784))
@@ -55,8 +55,8 @@ conf = SparkConf().setAppName('Mnist_Spark_MLP').setMaster('local[8]')
 sc = SparkContext(conf=conf)
 
 # Build RDD from numpy features and labels
-df = to_data_frame(sc, X_train, Y_train, categorical=True)
-test_df = to_data_frame(sc, X_test, Y_test, categorical=True)
+df = to_data_frame(sc, x_train, y_train, categorical=True)
+test_df = to_data_frame(sc, x_test, y_test, categorical=True)
 
 # Initialize Spark ML Estimator
 adadelta = elephas_optimizers.Adadelta()
