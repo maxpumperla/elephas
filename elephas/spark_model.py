@@ -95,9 +95,11 @@ class SparkModel(object):
 
     @property
     def master_network(self):
+        ''' Get master network '''
         return self._master_network
 
     @master_network.setter
+    ''' Set master network '''
     def master_network(self, network):
         self._master_network = network
 

@@ -72,7 +72,7 @@ spark_model.train(rdd,
                   validation_split=0.1)
 
 # Evaluate Spark model by evaluating the underlying model
-score = spark_model.get_network().evaluate(X_test,
+score = spark_model.master_network().evaluate(X_test,
                                            Y_test,
                                            show_accuracy=True,
                                            verbose=2)

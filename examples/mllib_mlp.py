@@ -78,6 +78,6 @@ spark_model.train(lp_rdd,
                   nb_classes=nb_classes)
 
 # Evaluate Spark model by evaluating the underlying model
-score = spark_model.get_network().evaluate(X_test, Y_test,
+score = spark_model.master_network().evaluate(X_test, Y_test,
                                            show_accuracy=True, verbose=2)
 print('Test accuracy:', score[1])
