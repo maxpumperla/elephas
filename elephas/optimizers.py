@@ -12,29 +12,38 @@ from six.moves import zip
 
 
 def clip_norm(g, c, n):
+    ''' Clip gradients '''
     if c > 0:
         g = K.switch(K.ge(n, c), g * c / n, g)
     return g
 
 
 def kl_divergence(p, p_hat):
+    ''' Kullbach-Leibler divergence '''
     return p_hat - p + p * K.log(p / p_hat)
 
 
 class Optimizer(object):
+    '''
+    Optimizer for elephas models, adapted from
+    respective Keras module.
+    '''
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         self.updates = []
 
     def get_state(self):
+        ''' Get latest status of optimizer updates '''
         return [u[0].get_value() for u in self.updates]
 
     def set_state(self, value_list):
+        ''' Set current status of optimizer '''
         assert len(self.updates) == len(value_list)
         for u, v in zip(self.updates, value_list):
             u[0].set_value(v)
 
     def get_updates(self, params, constraints, grads):
+        ''' Compute updates from gradients and constraints '''
         raise NotImplementedError
 
     def get_gradients(self, grads, params):
@@ -49,10 +58,12 @@ class Optimizer(object):
         return K.shared(grads)
 
     def get_config(self):
+        ''' Get configuration dictionary '''
         return {"name": self.__class__.__name__}
 
 
 class SGD(Optimizer):
+    ''' SGD, optionally with nesterov momentum '''
     def __init__(self, lr=0.01, momentum=0., decay=0.,
                  nesterov=False, *args, **kwargs):
         super(SGD, self).__init__(**kwargs)
@@ -87,6 +98,9 @@ class SGD(Optimizer):
 
 
 class RMSprop(Optimizer):
+    '''
+    Reference: www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf
+    '''
     def __init__(self, lr=0.001, rho=0.9, epsilon=1e-6, *args, **kwargs):
         super(RMSprop, self).__init__(**kwargs)
         self.__dict__.update(locals())
@@ -114,6 +128,9 @@ class RMSprop(Optimizer):
 
 
 class Adagrad(Optimizer):
+    '''
+    Reference: http://www.magicbroom.info/Papers/DuchiHaSi10.pdf
+    '''
     def __init__(self, lr=0.01, epsilon=1e-6, *args, **kwargs):
         super(Adagrad, self).__init__(**kwargs)
         self.__dict__.update(locals())
