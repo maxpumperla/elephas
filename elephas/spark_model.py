@@ -66,13 +66,17 @@ class SparkModel(object):
 
     @staticmethod
     def determine_master():
-        ''' Get URL of parameter server, running on master '''
+        '''
+        Get URL of parameter server, running on master
+        '''
         master_url = socket.gethostbyname(socket.gethostname()) + ':5000'
         return master_url
 
     def get_train_config(self, nb_epoch, batch_size,
                          verbose, validation_split):
-        ''' Get configuration of training parameters'''
+        '''
+        Get configuration of training parameters
+        '''
         train_config = {}
         train_config['nb_epoch'] = nb_epoch
         train_config['batch_size'] = batch_size
@@ -81,7 +85,9 @@ class SparkModel(object):
         return train_config
 
     def get_config(self):
-        ''' Get configuration of model parameters'''
+        '''
+        Get configuration of model parameters
+        '''
         model_config = {}
         model_config['model'] = self.master_network.get_config()
         model_config['optimizer'] = self.optimizer.get_config()
@@ -141,11 +147,15 @@ class SparkModel(object):
                      threaded=True, use_reloader=False)
 
     def predict(self, data):
-        ''' Get prediction probabilities for a numpy array of features'''
+        '''
+        Get prediction probabilities for a numpy array of features
+        '''
         return self.master_network.predict(data)
 
     def predict_classes(self, data):
-        ''' Predict classes for a numpy array of features'''
+        '''
+        Predict classes for a numpy array of features
+        '''
         return self.master_network.predict_classes(data)
 
     def train(self, rdd, nb_epoch=10, batch_size=32,
@@ -165,7 +175,9 @@ class SparkModel(object):
 
     def _train(self, rdd, nb_epoch=10, batch_size=32, verbose=0,
                validation_split=0.1, master_url='localhost:5000'):
-        ''' Protected train method to make wrapping easier '''
+        '''
+        Protected train method to make wrapping of modes easier
+        '''
         if self.mode in ['asynchronous', 'hogwild']:
             self.start_server()
         yaml = self.master_network.to_yaml()
@@ -204,7 +216,9 @@ class SparkWorker(object):
         self.train_config = train_config
 
     def train(self, data_iterator):
-        '''Train a keras model on a worker'''
+        '''
+        Train a keras model on a worker
+        '''
         feature_iterator, label_iterator = tee(data_iterator, 2)
         x_train = np.asarray([x for x, y in feature_iterator])
         y_train = np.asarray([y for x, y in label_iterator])
@@ -249,7 +263,8 @@ class AsynchronousSparkWorker(object):
         nb_train_sample = len(x_train[0])
         nb_batch = int(np.ceil(nb_train_sample/float(batch_size)))
         index_array = np.arange(nb_train_sample)
-        batches = [(i*batch_size, min(nb_train_sample, (i+1)*batch_size)) for i in range(0, nb_batch)]
+        batches = [(i*batch_size, min(nb_train_sample, (i+1)*batch_size))
+                   for i in range(0, nb_batch)]
 
         if self.frequency == 'epoch':
             for epoch in range(nb_epoch):
@@ -299,7 +314,7 @@ class SparkMLlibModel(SparkModel):
         self._train(rdd, nb_epoch, batch_size, verbose, validation_split)
 
     def predict(self, mllib_data):
-        ''' Predict probabilities for an RDD with features'''
+        ''' Predict probabilities for an RDD of features'''
         if isinstance(mllib_data, Matrix):
             return to_matrix(self.master_network.predict(from_matrix(mllib_data)))
         elif isinstance(mllib_data, Vector):
