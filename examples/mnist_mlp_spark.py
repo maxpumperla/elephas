@@ -65,15 +65,8 @@ spark_model = SparkModel(sc,
                          num_workers=2)
 
 # Train Spark model
-spark_model.train(rdd,
-                  nb_epoch=nb_epoch,
-                  batch_size=batch_size,
-                  verbose=2,
-                  validation_split=0.1)
+spark_model.train(rdd, nb_epoch=nb_epoch, batch_size=batch_size, verbose=2, validation_split=0.1)
 
 # Evaluate Spark model by evaluating the underlying model
-score = spark_model.master_network.evaluate(x_test,
-                                            y_test,
-                                            show_accuracy=True,
-                                            verbose=2)
+score = spark_model.master_network.evaluate(x_test, y_test, show_accuracy=True, verbose=2)
 print('Test accuracy:', score[1])

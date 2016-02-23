@@ -13,6 +13,8 @@ from elephas import optimizers as elephas_optimizers
 
 from pyspark import SparkContext, SparkConf
 from pyspark.mllib.evaluation import MulticlassMetrics
+from pyspark.ml import Pipeline
+
 
 # Define basic parameters
 batch_size = 64
@@ -58,26 +60,27 @@ sc = SparkContext(conf=conf)
 df = to_data_frame(sc, x_train, y_train, categorical=True)
 test_df = to_data_frame(sc, x_test, y_test, categorical=True)
 
-# Initialize Spark ML Estimator
+# Define elephas optimizer
 adadelta = elephas_optimizers.Adadelta()
-estimator = ElephasEstimator(sc,
-                             model,
-                             nb_epoch=nb_epoch,
-                             batch_size=batch_size,
-                             optimizer=adadelta,
-                             frequency='batch',
-                             mode='asynchronous',
-                             num_workers=2,
-                             verbose=0,
-                             validation_split=0.1,
-                             categorical=True,
-                             nb_classes=nb_classes)
+
+# Initialize Spark ML Estimator
+estimator = ElephasEstimator()
+estimator.set_keras_model_config(model.to_yaml())
+estimator.set_optimizer_config(adadelta.get_config())
+estimator.set_nb_epoch(nb_epoch)
+estimator.set_batch_size(batch_size)
+estimator.set_num_workers(2)
+estimator.set_verbosity(0)
+estimator.set_validation_split(0.1)
+estimator.set_categorical_labels(True)
+estimator.set_nb_classes(nb_classes)
 
 # Fitting a model returns a Transformer
-fitted_model = estimator.fit(df)
+pipeline = Pipeline(stages=[estimator])
+fitted_pipeline = pipeline.fit(df)
 
 # Evaluate Spark model by evaluating the underlying model
-prediction = fitted_model.transform(test_df)
+prediction = fitted_pipeline.transform(test_df)
 pnl = prediction.select("label", "prediction")
 pnl.show(100)
 

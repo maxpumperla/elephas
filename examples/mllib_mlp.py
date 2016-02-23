@@ -54,30 +54,16 @@ sc = SparkContext(conf=conf)
 
 # Build RDD from numpy features and labels
 lp_rdd = to_labeled_point(sc, x_train, y_train, categorical=True)
-print(lp_rdd.first())
 rdd = lp_to_simple_rdd(lp_rdd, True, nb_classes)
-rdd = rdd.repartition(4)
-rdd.first()
 
 # Initialize SparkModel from Keras model and Spark context
 adadelta = elephas_optimizers.Adadelta()
-spark_model = SparkMLlibModel(sc,
-                              model,
-                              optimizer=adadelta,
-                              frequency='batch',
-                              mode='asynchronous',
-                              num_workers=2)
+spark_model = SparkMLlibModel(sc, model, optimizer=adadelta, frequency='batch', mode='asynchronous', num_workers=2)
 
 # Train Spark model
-spark_model.train(lp_rdd,
-                  nb_epoch=20,
-                  batch_size=32,
-                  verbose=0,
-                  validation_split=0.1,
-                  categorical=True,
-                  nb_classes=nb_classes)
+spark_model.train(lp_rdd, nb_epoch=20, batch_size=32, verbose=0,
+                  validation_split=0.1, categorical=True, nb_classes=nb_classes)
 
 # Evaluate Spark model by evaluating the underlying model
-score = spark_model.master_network.evaluate(x_test, y_test,
-                                            show_accuracy=True, verbose=2)
+score = spark_model.master_network.evaluate(x_test, y_test, show_accuracy=True, verbose=2)
 print('Test accuracy:', score[1])
