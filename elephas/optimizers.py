@@ -6,6 +6,7 @@ not by one of the backends (Theano or Tensorflow).
 '''
 from __future__ import absolute_import
 from keras import backend as K
+from keras.utils.generic_utils import get_from_module
 import numpy as np
 
 from six.moves import zip
@@ -229,3 +230,8 @@ rmsprop = RMSprop
 adagrad = Adagrad
 adadelta = Adadelta
 adam = Adam
+
+
+def get(identifier, kwargs=None):
+    return get_from_module(identifier, globals(), 'optimizer',
+                           instantiate=True, kwargs=kwargs)
