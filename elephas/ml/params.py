@@ -19,6 +19,59 @@ class HasKerasModelConfig(Params):
         return self.getOrDefault(self.keras_model)
 
 
+class HasOptimizerConfig(Params):
+    '''
+    Mandatory:
+
+    Parameter mixin for Elephas optimizer config
+    '''
+    def __init__(self):
+        super(HasOptimizerConfig, self).__init__()
+        self.optimizer_config = Param(self, "optimizer_config", "Serialized Elephas optimizer properties")
+        # TODO: Define default value
+
+    def set_optimizer_config(self, optimizer):
+        self._paramMap[self.optimizer] = optimizer
+        return self
+
+    def get_optimizer_config(self):
+        return self.getOrDefault(self.config)
+
+
+class HasMode(Params):
+    '''
+    Parameter mixin for Elephas mode
+    '''
+    def __init__(self):
+        super(HasMode, self).__init__()
+        self.mode = Param(self, "mode", "Elephas mode")
+        self._setDefault(mode='asynchronous')
+
+    def set_mode(self, mode):
+        self._paramMap[self.mode] = mode
+        return self
+
+    def get_mode(self):
+        return self.getOrDefault(self.mode)
+
+
+class HasFrequency(Params):
+    '''
+    Parameter mixin for Elephas frequency
+    '''
+    def __init__(self):
+        super(HasFrequency, self).__init__()
+        self.frequency = Param(self, "frequency", "Elephas frequency")
+        self._setDefault(frequency='epoch')
+
+    def set_frequency(self, frequency):
+        self._paramMap[self.frequency] = frequency
+        return self
+
+    def get_frequency(self):
+        return self.getOrDefault(self.frequency)
+
+
 class HasNumberOfClasses(Param):
     '''
     Mandatory:
