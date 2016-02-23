@@ -289,8 +289,8 @@ class SparkMLlibModel(SparkModel):
     MLlib model takes RDDs of LabeledPoints. Internally we just convert
     back to plain old pair RDDs and continue as in SparkModel
     '''
-    def __init__(self, **kwargs):
-        super(SparkModel, self).__init__(**kwargs)
+    def __init__(self, sc, master_network, optimizer=None, mode='asynchronous', frequency='epoch', num_workers=4):
+        SparkModel.__init__(self, sc, master_network, optimizer, mode, frequency, num_workers)
 
     def train(self, labeled_points, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1,
               categorical=False, nb_classes=None):
