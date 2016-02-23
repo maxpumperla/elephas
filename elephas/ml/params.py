@@ -4,7 +4,7 @@ from pyspark.ml.param.shared import Param, Params
 class HasKerasModelConfig(Params):
     '''
     Mandatory:
-    
+
     Parameter mixin for Keras model yaml
     '''
     def __init__(self):
@@ -17,6 +17,7 @@ class HasKerasModelConfig(Params):
 
     def get_keras_model(self):
         return self.getOrDefault(self.keras_model)
+
 
 class HasNumberOfClasses(Param):
     '''
@@ -35,6 +36,7 @@ class HasNumberOfClasses(Param):
     def get_nb_classes(self):
         return self.getOrDefault(self.nb_classes)
 
+
 class HasCategoricalFeatures(Param):
     '''
     Mandatory:
@@ -44,7 +46,6 @@ class HasCategoricalFeatures(Param):
     def __init__(self):
         super(HasCategoricalFeatures, self).__init__()
         self.categorical = Param(self, "categorical", "Boolean to indicate if labels are categorical")
-        #self._setDefault(categorical=False)
 
     def set_categorical_features(self, categorical):
         self._paramMap[self.categorical] = categorical
