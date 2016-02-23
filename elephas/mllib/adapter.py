@@ -15,8 +15,7 @@ def to_matrix(np_array):
                               np_array.shape[1],
                               np_array.ravel())
     else:
-        raise Exception("""An MLLib Matrix can only be created
-                        from a two-dimensional numpy array""")
+        raise Exception("""An MLLib Matrix can only be created from a two-dimensional numpy array""")
 
 
 def from_vector(vector):
@@ -29,5 +28,4 @@ def to_vector(np_array):
     if len(np_array.shape) == 1:
         return Vectors.dense(np_array)
     else:
-        raise Exception("""An MLLib Vector can only be created
-                        from a one-dimensional numpy array""")
+        raise Exception("""An MLLib Vector can only be created from a one-dimensional numpy array""")
