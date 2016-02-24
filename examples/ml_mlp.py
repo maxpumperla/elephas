@@ -19,7 +19,7 @@ from pyspark.ml import Pipeline
 # Define basic parameters
 batch_size = 64
 nb_classes = 10
-nb_epoch = 3
+nb_epoch = 1
 
 # Load data
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
@@ -69,7 +69,7 @@ estimator.set_keras_model_config(model.to_yaml())
 estimator.set_optimizer_config(adadelta.get_config())
 estimator.set_nb_epoch(nb_epoch)
 estimator.set_batch_size(batch_size)
-estimator.set_num_workers(2)
+estimator.set_num_workers(1)
 estimator.set_verbosity(0)
 estimator.set_validation_split(0.1)
 estimator.set_categorical_labels(True)
