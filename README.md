@@ -5,7 +5,7 @@ Elephas is an extension of [Keras](http://keras.io), which allows you to run dis
 ![Elephas](elephas.gif)
 
 ## Introduction
-Elephas brings deep learning with [Keras](http://keras.io) to [Spark](http://spark.apache.org). Elephas intends to keep the simplicity and high usability of Keras, thereby allowing for fast prototyping of distributed models, which can be run on massive data sets. As an introductory example, see the following [iPython notebook](https://github.com/maxpumperla/elephas/blob/master/examples/Spark_ML_Pipeline.ipynb).
+Elephas brings deep learning with [Keras](http://keras.io) to [Spark](http://spark.apache.org). Elephas intends to keep the simplicity and high usability of Keras, thereby allowing for fast prototyping of distributed models, which can be run on massive data sets. For an introductory example, see the following [iPython notebook](https://github.com/maxpumperla/elephas/blob/master/examples/Spark_ML_Pipeline.ipynb).
 
 ἐλέφας is Greek for _ivory_ and an accompanying project to κέρας, meaning _horn_. If this seems weird mentioning, like a bad dream, you should confirm it actually is at the [Keras documentation](https://github.com/fchollet/keras/blob/master/README.md). Elephas also means _elephant_, as in stuffed yellow elephant.
 
