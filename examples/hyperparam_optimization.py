@@ -73,5 +73,6 @@ def model(X_train, Y_train, X_test, Y_test):
 conf = SparkConf().setAppName('Elephas_Hyperparameter_Optimization').setMaster('local[8]')
 sc = SparkContext(conf=conf)
 
+# Define hyper-parameter model and run optimization.
 hyperparam_model = HyperParamModel(sc)
 hyperparam_model.minimize(model=model, data=data, max_evals=5)

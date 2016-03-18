@@ -208,7 +208,7 @@ In this mode each worker sends a new batch of parameter updates at the same time
 
 ## Distributed hyper-parameter optimization
 
-Hyper-parameter optimization with elephas is based on [hyperas](https://github.com/maxpumperla/hyperas), a convenience wrapper for hyperopt and keras. Each Spark worker executes a number of trials, the results get collected and the best model is returned. As the distributed mode in hyperopt (using MongoDB), is somewhat difficult to configure and error prone at the time of writing, we chose to implement parallelization ourselves. Right now, the only available optimization algorithm is random search.
+Hyper-parameter optimization with elephas is based on [hyperas](https://github.com/maxpumperla/hyperas), a convenience wrapper for hyperopt and keras. Make sure to have at least version ```0.1.2``` of hyperas installed. Each Spark worker executes a number of trials, the results get collected and the best model is returned. As the distributed mode in hyperopt (using MongoDB), is somewhat difficult to configure and error prone at the time of writing, we chose to implement parallelization ourselves. Right now, the only available optimization algorithm is random search.
 
 The first part of this example is more or less directly taken from the hyperas documentation. We define data and model as functions, hyper-parameter ranges are defined through braces. See the hyperas documentation for more on how this works.
 
