@@ -3,7 +3,7 @@ dist: trusty
 language: python
 python:
   - "2.7"
-  - "3.4"
+  # - "3.4" # Note that hyperopt currently seems to have issues with 3.4
 install:
   # code below is taken from http://conda.pydata.org/docs/travis.html
   # We do this conditionally because it saves us some downloading if the
