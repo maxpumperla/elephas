@@ -319,7 +319,6 @@ Having said all that, we hope you learn to appreciate elephas as a pretty easy t
 
 Constructive feedback and pull requests for elephas are very welcome. Here's a few things we're having in mind for future development
 
-- Tighter Spark ML integration. Pipelines do not work yet.
 - Benchmarks for training speed and accuracy.
 - Some real-world tests on EC2 instances with large data sets like imagenet.
 
