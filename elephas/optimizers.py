@@ -140,7 +140,6 @@ class Adagrad(Optimizer):
     def get_updates(self, params, constraints, grads):
         accumulators = [np.zeros_like(p) for p in params]
         new_weights = []
-
         for p, g, a, c in zip(params, grads, accumulators, constraints):
             new_a = a + g ** 2
             new_p = p - self.lr * g / np.sqrt(new_a + self.epsilon)
