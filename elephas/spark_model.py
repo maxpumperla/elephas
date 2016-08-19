@@ -53,11 +53,14 @@ class SparkModel(object):
                  master_optimizer="adam",
                  master_loss="categorical_crossentropy",
                  master_metrics=None,
-                 custom_objects={},
+                 custom_objects=None,
                  *args, **kwargs):
+
 
         self.spark_context = sc
         self._master_network = master_network
+        if custom_objects is None:
+            custom_objects = {}
         if master_metrics is None:
             master_metrics = ["accuracy"]
         if optimizer is None:
@@ -151,7 +154,7 @@ class SparkModel(object):
                 self.lock.acquire_write()
             constraints = self.master_network.constraints
             if len(constraints) == 0:
-                empty = lambda a: a
+                def empty(a): return a
                 constraints = [empty for x in self.weights]
             self.weights = self.optimizer.get_updates(self.weights, constraints, delta)
             if self.mode == 'asynchronous':
