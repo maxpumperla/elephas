@@ -46,7 +46,6 @@ model.add(Activation('softmax'))
 
 # Compile model
 rms = RMSprop()
-model.compile(loss='categorical_crossentropy', optimizer=rms)
 
 # Create Spark context
 conf = SparkConf().setAppName('Mnist_Spark_MLP').setMaster('local[8]')
@@ -58,12 +57,12 @@ rdd = lp_to_simple_rdd(lp_rdd, True, nb_classes)
 
 # Initialize SparkModel from Keras model and Spark context
 adadelta = elephas_optimizers.Adadelta()
-spark_model = SparkMLlibModel(sc, model, optimizer=adadelta, frequency='batch', mode='asynchronous', num_workers=2)
+spark_model = SparkMLlibModel(sc, model, optimizer=adadelta, frequency='batch', mode='asynchronous', num_workers=2, master_optimizer=rms)
 
 # Train Spark model
 spark_model.train(lp_rdd, nb_epoch=20, batch_size=32, verbose=0,
                   validation_split=0.1, categorical=True, nb_classes=nb_classes)
 
 # Evaluate Spark model by evaluating the underlying model
-score = spark_model.master_network.evaluate(x_test, y_test, show_accuracy=True, verbose=2)
+score = spark_model.master_network.evaluate(x_test, y_test, verbose=2)
 print('Test accuracy:', score[1])

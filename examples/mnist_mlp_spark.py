@@ -48,15 +48,7 @@ model.add(Dropout(0.2))
 model.add(Dense(10))
 model.add(Activation('softmax'))
 
-# Compile model
-def compiler(yaml):
-    from keras.models import model_from_yaml
-    model = model_from_yaml(yaml)
-    sgd = SGD(lr=0.1)
-    model.compile(loss='categorical_crossentropy', optimizer=sgd, metrics=["accuracy"])
-    return model
 sgd = SGD(lr=0.1)
-model.compile(loss='categorical_crossentropy', optimizer=sgd, metrics=["accuracy"])
 
 # Build RDD from numpy features and labels
 rdd = to_simple_rdd(sc, x_train, y_train)
@@ -65,11 +57,10 @@ rdd = to_simple_rdd(sc, x_train, y_train)
 adagrad = elephas_optimizers.Adagrad()
 spark_model = SparkModel(sc,
                          model,
-                         compiler,
                          optimizer=adagrad,
                          frequency='epoch',
                          mode='asynchronous',
-                         num_workers=2)
+                         num_workers=2,master_optimizer=sgd)
 
 # Train Spark model
 spark_model.train(rdd, nb_epoch=nb_epoch, batch_size=batch_size, verbose=2, validation_split=0.1)
