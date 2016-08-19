@@ -328,7 +328,7 @@ class SparkMLlibModel(SparkModel):
                  master_optimizer="adam",
                  master_loss="categorical_crossentropy",
                  master_metrics=None,
-                 custom_objects={}):
+                 custom_objects=None):
         SparkModel.__init__(self, sc, master_network, optimizer, mode, frequency, num_workers,
                             master_optimizer=master_optimizer, master_loss=master_loss, master_metrics=master_metrics,
                             custom_objects=custom_objects)
