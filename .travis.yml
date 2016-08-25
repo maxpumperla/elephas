@@ -34,6 +34,7 @@ install:
 
 # Just run an example for now
 script:
+  - python -c "import keras.backend"
   - spark-submit --driver-memory 2G $PWD/examples/mnist_mlp_spark.py
 after_success:
   - coveralls
