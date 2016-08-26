@@ -16,7 +16,7 @@ from pyspark import SparkContext, SparkConf
 # Define basic parameters
 batch_size = 64
 nb_classes = 10
-nb_epoch = 3
+nb_epoch = 10
 
 # Create Spark context
 conf = SparkConf().setAppName('Mnist_Spark_MLP').setMaster('local[8]')
@@ -48,9 +48,7 @@ model.add(Dropout(0.2))
 model.add(Dense(10))
 model.add(Activation('softmax'))
 
-# Compile model
 sgd = SGD(lr=0.1)
-model.compile(loss='categorical_crossentropy', optimizer=sgd)
 
 # Build RDD from numpy features and labels
 rdd = to_simple_rdd(sc, x_train, y_train)
@@ -62,11 +60,11 @@ spark_model = SparkModel(sc,
                          optimizer=adagrad,
                          frequency='epoch',
                          mode='asynchronous',
-                         num_workers=2)
+                         num_workers=2,master_optimizer=sgd)
 
 # Train Spark model
 spark_model.train(rdd, nb_epoch=nb_epoch, batch_size=batch_size, verbose=2, validation_split=0.1)
 
 # Evaluate Spark model by evaluating the underlying model
-score = spark_model.master_network.evaluate(x_test, y_test, show_accuracy=True, verbose=2)
+score = spark_model.master_network.evaluate(x_test, y_test, verbose=2)
 print('Test accuracy:', score[1])

@@ -15,14 +15,13 @@ except ImportError:
 
 from pyspark.mllib.linalg import Matrix, Vector
 
-from keras.models import model_from_yaml, slice_X
-
 from .utils.rwlock import RWLock
 from .utils.functional_utils import subtract_params
 from .utils.rdd_utils import lp_to_simple_rdd
 from .mllib.adapter import to_matrix, from_matrix, to_vector, from_vector
 from .optimizers import SGD as default_optimizer
 
+from keras.models import model_from_yaml
 
 def get_server_weights(master_url='localhost:5000'):
     '''
@@ -30,7 +29,9 @@ def get_server_weights(master_url='localhost:5000'):
     '''
     request = urllib2.Request('http://{0}/parameters'.format(master_url),
                               headers={'Content-Type': 'application/elephas'})
-    return pickle.loads(urllib2.urlopen(request).read())
+    ret = urllib2.urlopen(request).read()
+    weights = pickle.loads(ret)
+    return weights
 
 
 def put_deltas_to_server(delta, master_url='localhost:5000'):
@@ -48,9 +49,20 @@ class SparkModel(object):
     should inherit from it.
     '''
     def __init__(self, sc, master_network, optimizer=None, mode='asynchronous', frequency='epoch',
-                 num_workers=4, *args, **kwargs):
+                 num_workers=4,
+                 master_optimizer="adam",
+                 master_loss="categorical_crossentropy",
+                 master_metrics=None,
+                 custom_objects=None,
+                 *args, **kwargs):
+
+
         self.spark_context = sc
         self._master_network = master_network
+        if custom_objects is None:
+            custom_objects = {}
+        if master_metrics is None:
+            master_metrics = ["accuracy"]
         if optimizer is None:
             self.optimizer = default_optimizer()
         else:
@@ -61,6 +73,10 @@ class SparkModel(object):
         self.weights = master_network.get_weights()
         self.pickled_weights = None
         self.lock = RWLock()
+        self.master_optimizer = master_optimizer
+        self.master_loss = master_loss
+        self.master_metrics = master_metrics
+        self.custom_objects = custom_objects
 
     @staticmethod
     def determine_master():
@@ -137,7 +153,9 @@ class SparkModel(object):
             if self.mode == 'asynchronous':
                 self.lock.acquire_write()
             constraints = self.master_network.constraints
-
+            if len(constraints) == 0:
+                def empty(a): return a
+                constraints = [empty for x in self.weights]
             self.weights = self.optimizer.get_updates(self.weights, constraints, delta)
             if self.mode == 'asynchronous':
                 self.lock.release()
@@ -176,13 +194,17 @@ class SparkModel(object):
         '''
         Protected train method to make wrapping of modes easier
         '''
+        self.master_network.compile(optimizer=self.master_optimizer, loss=self.master_loss, metrics=self.master_metrics)
         if self.mode in ['asynchronous', 'hogwild']:
             self.start_server()
         yaml = self.master_network.to_yaml()
         train_config = self.get_train_config(nb_epoch, batch_size,
                                              verbose, validation_split)
         if self.mode in ['asynchronous', 'hogwild']:
-            worker = AsynchronousSparkWorker(yaml, train_config, self.frequency, master_url)
+            worker = AsynchronousSparkWorker(
+                yaml, train_config, self.frequency, master_url,
+                self.master_optimizer, self.master_loss, self.master_metrics, self.custom_objects
+            )
             rdd.mapPartitions(worker.train).collect()
             new_parameters = get_server_weights(master_url)
         elif self.mode == 'synchronous':
@@ -203,10 +225,14 @@ class SparkWorker(object):
     '''
     Synchronous Spark worker. This code will be executed on workers.
     '''
-    def __init__(self, yaml, parameters, train_config):
+    def __init__(self, yaml, parameters, train_config, master_optimizer, master_loss, master_metrics, custom_objects):
         self.yaml = yaml
         self.parameters = parameters
         self.train_config = train_config
+        self.master_optimizer = master_optimizer
+        self.master_loss = master_loss
+        self.master_metrics = master_metrics
+        self.custom_objects = custom_objects
 
     def train(self, data_iterator):
         '''
@@ -216,11 +242,12 @@ class SparkWorker(object):
         x_train = np.asarray([x for x, y in feature_iterator])
         y_train = np.asarray([y for x, y in label_iterator])
 
-        model = model_from_yaml(self.yaml)
+        model = model_from_yaml(self.yaml, self.custom_objects)
+        model.compile(optimizer=self.master_optimizer, loss=self.master_loss, metrics=self.master_metrics)
         model.set_weights(self.parameters.value)
         weights_before_training = model.get_weights()
         if x_train.shape[0] > self.train_config.get('batch_size'):
-            model.fit(x_train, y_train, show_accuracy=True, **self.train_config)
+            model.fit(x_train, y_train, **self.train_config)
         weights_after_training = model.get_weights()
         deltas = subtract_params(weights_before_training, weights_after_training)
         yield deltas
@@ -230,11 +257,16 @@ class AsynchronousSparkWorker(object):
     '''
     Asynchronous Spark worker. This code will be executed on workers.
     '''
-    def __init__(self, yaml, train_config, frequency, master_url):
+    def __init__(self, yaml, train_config, frequency, master_url, master_optimizer, master_loss, master_metrics, custom_objects):
         self.yaml = yaml
         self.train_config = train_config
         self.frequency = frequency
         self.master_url = master_url
+        self.master_optimizer = master_optimizer
+        self.master_loss = master_loss
+        self.master_metrics = master_metrics
+        self.custom_objects = custom_objects
+
 
     def train(self, data_iterator):
         '''
@@ -247,7 +279,9 @@ class AsynchronousSparkWorker(object):
 
         if x_train.size == 0:
             return
-        model = model_from_yaml(self.yaml)
+
+        model = model_from_yaml(self.yaml, self.custom_objects)
+        model.compile(optimizer=self.master_optimizer, loss=self.master_loss, metrics=self.master_metrics)
 
         nb_epoch = self.train_config['nb_epoch']
         batch_size = self.train_config.get('batch_size')
@@ -262,11 +296,12 @@ class AsynchronousSparkWorker(object):
                 model.set_weights(weights_before_training)
                 self.train_config['nb_epoch'] = 1
                 if x_train.shape[0] > batch_size:
-                    model.fit(x_train, y_train, show_accuracy=True, **self.train_config)
+                    model.fit(x_train, y_train, **self.train_config)
                 weights_after_training = model.get_weights()
                 deltas = subtract_params(weights_before_training, weights_after_training)
                 put_deltas_to_server(deltas, self.master_url)
         elif self.frequency == 'batch':
+            from keras.engine.training import slice_X
             for epoch in range(nb_epoch):
                 if x_train.shape[0] > batch_size:
                     for (batch_start, batch_end) in batches:
@@ -289,8 +324,14 @@ class SparkMLlibModel(SparkModel):
     MLlib model takes RDDs of LabeledPoints. Internally we just convert
     back to plain old pair RDDs and continue as in SparkModel
     '''
-    def __init__(self, sc, master_network, optimizer=None, mode='asynchronous', frequency='epoch', num_workers=4):
-        SparkModel.__init__(self, sc, master_network, optimizer, mode, frequency, num_workers)
+    def __init__(self, sc, master_network, optimizer=None, mode='asynchronous', frequency='epoch', num_workers=4,
+                 master_optimizer="adam",
+                 master_loss="categorical_crossentropy",
+                 master_metrics=None,
+                 custom_objects=None):
+        SparkModel.__init__(self, sc, master_network, optimizer, mode, frequency, num_workers,
+                            master_optimizer=master_optimizer, master_loss=master_loss, master_metrics=master_metrics,
+                            custom_objects=custom_objects)
 
     def train(self, labeled_points, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1,
               categorical=False, nb_classes=None):
