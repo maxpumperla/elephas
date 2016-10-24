@@ -8,6 +8,7 @@ USER root
 
 # Spark dependencies
 ENV APACHE_SPARK_VERSION 2.0.1
+ENV PYJ_VERSION py4j-0.10.1-src.zip
 RUN apt-get -y update && \
     apt-get install -y --no-install-recommends openjdk-7-jre-headless && \
     apt-get clean && \
@@ -37,7 +38,7 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv E56151BF && \
 
 # Spark and Mesos config
 ENV SPARK_HOME /usr/local/spark
-ENV PYTHONPATH $SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-0.9-src.zip
+ENV PYTHONPATH $SPARK_HOME/python:$SPARK_HOME/python/lib/$PYJ_LIB_VERSION
 ENV MESOS_NATIVE_LIBRARY /usr/local/lib/libmesos.so
 ENV SPARK_OPTS --driver-java-options=-Xms1024M --driver-java-options=-Xmx4096M --driver-java-options=-Dlog4j.logLevel=info
 
