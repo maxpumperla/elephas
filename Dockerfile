@@ -52,3 +52,4 @@ RUN conda install --channel https://conda.anaconda.org/KEHANG --quiet --yes 'ker
 RUN pip install https://github.com/hyperopt/hyperopt/archive/master.zip
 # Elephas for distributed spark
 RUN pip install elephas
+RUN pip install py4j
