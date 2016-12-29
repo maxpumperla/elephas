@@ -4,6 +4,7 @@ from pyspark.mllib.regression import LabeledPoint
 import numpy as np
 
 from ..mllib.adapter import to_vector, from_vector
+from six.moves import zip
 
 
 def to_simple_rdd(sc, features, labels):

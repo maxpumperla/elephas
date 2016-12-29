@@ -1,10 +1,12 @@
 from __future__ import print_function
+from __future__ import absolute_import
 from hyperopt import Trials, rand
 from hyperas.ensemble import VotingModel
 from hyperas.optim import get_hyperopt_model_string, base_minimizer
 import numpy as np
 from keras.models import model_from_yaml
 import six.moves.cPickle as pickle
+from six.moves import range
 
 # depend on hyperas, boto etc. is optional
 
@@ -79,7 +81,7 @@ class HyperasWorker(object):
         trials = Trials()
         algo = rand.suggest
 
-        elem = dummy_iterator.next()
+        elem = next(dummy_iterator)
         import random
         random.seed(elem)
         rand_seed = np.random.randint(elem)

@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import numpy as np
+from six.moves import zip
 
 
 def add_params(p1, p2):

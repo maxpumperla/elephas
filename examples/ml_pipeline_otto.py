@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+from __future__ import absolute_import
 from pyspark.mllib.linalg import Vectors
 import numpy as np
 import random
