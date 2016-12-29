@@ -8,6 +8,7 @@ import six.moves.cPickle as pickle
 
 # depend on hyperas, boto etc. is optional
 
+
 class HyperParamModel(object):
     '''
     HyperParamModel
@@ -54,11 +55,11 @@ class HyperParamModel(object):
         trials_list = self.compute_trials(model, data, max_evals)
         num_trials = sum(len(trials) for trials in trials_list)
         if num_trials < nb_models:
-            nb_models = len(trials)
+            nb_models = len(trials_list)
         scores = []
         for trials in trials_list:
             scores = scores + [trial.get('result').get('loss') for trial in trials]
-        cut_off = sorted(scores, reverse=True)[nb_models-1]
+        cut_off = sorted(scores, reverse=True)[nb_models - 1]
         model_list = []
         for trials in trials_list:
             for trial in trials:
@@ -67,6 +68,7 @@ class HyperParamModel(object):
                     model.set_weights(pickle.loads(trial.get('result').get('weights')))
                     model_list.append(model)
         return model_list
+
 
 class HyperasWorker(object):
     def __init__(self, bc_model, bc_max_evals):
@@ -82,6 +84,6 @@ class HyperasWorker(object):
         random.seed(elem)
         rand_seed = np.random.randint(elem)
 
-        best_run = base_minimizer(model=None, data=None, algo=algo, max_evals=self.max_evals,
-                                  trials=trials, full_model_string=self.model_string, rseed=rand_seed)
+        base_minimizer(model=None, data=None, algo=algo, max_evals=self.max_evals,
+                       trials=trials, full_model_string=self.model_string, rseed=rand_seed)
         yield trials

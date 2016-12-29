@@ -23,6 +23,7 @@ from .optimizers import SGD as default_optimizer
 
 from keras.models import model_from_yaml
 
+
 def get_server_weights(master_url='localhost:5000'):
     '''
     Retrieve master weights from parameter server
@@ -55,7 +56,6 @@ class SparkModel(object):
                  master_metrics=None,
                  custom_objects=None,
                  *args, **kwargs):
-
 
         self.spark_context = sc
         self._master_network = master_network
@@ -154,7 +154,8 @@ class SparkModel(object):
                 self.lock.acquire_write()
             constraints = self.master_network.constraints
             if len(constraints) == 0:
-                def empty(a): return a
+                def empty(a):
+                    return a
                 constraints = [empty for x in self.weights]
             self.weights = self.optimizer.get_updates(self.weights, constraints, delta)
             if self.mode == 'asynchronous':
@@ -267,7 +268,6 @@ class AsynchronousSparkWorker(object):
         self.master_metrics = master_metrics
         self.custom_objects = custom_objects
 
-
     def train(self, data_iterator):
         '''
         Train a keras model on a worker and send asynchronous updates
@@ -286,9 +286,9 @@ class AsynchronousSparkWorker(object):
         nb_epoch = self.train_config['nb_epoch']
         batch_size = self.train_config.get('batch_size')
         nb_train_sample = len(x_train[0])
-        nb_batch = int(np.ceil(nb_train_sample/float(batch_size)))
+        nb_batch = int(np.ceil(nb_train_sample / float(batch_size)))
         index_array = np.arange(nb_train_sample)
-        batches = [(i*batch_size, min(nb_train_sample, (i+1)*batch_size)) for i in range(0, nb_batch)]
+        batches = [(i * batch_size, min(nb_train_sample, (i + 1) * batch_size)) for i in range(0, nb_batch)]
 
         if self.frequency == 'epoch':
             for epoch in range(nb_epoch):

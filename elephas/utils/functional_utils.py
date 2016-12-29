@@ -9,7 +9,7 @@ def add_params(p1, p2):
     '''
     res = []
     for x, y in zip(p1, p2):
-        res.append(x+y)
+        res.append(x + y)
     return res
 
 
@@ -19,7 +19,7 @@ def subtract_params(p1, p2):
     '''
     res = []
     for x, y in zip(p1, p2):
-        res.append(x-y)
+        res.append(x - y)
     return res
 
 

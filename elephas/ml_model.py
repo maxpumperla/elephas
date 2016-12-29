@@ -2,18 +2,27 @@ from __future__ import absolute_import, print_function
 
 import numpy as np
 
-from pyspark.ml.param.shared import HasInputCol, HasOutputCol, HasFeaturesCol, HasLabelCol
+from pyspark.ml.param.shared import HasOutputCol, HasFeaturesCol, HasLabelCol
 from pyspark.ml.util import keyword_only
-from pyspark.sql import Row
 from pyspark.ml import Estimator, Model
 from pyspark.sql.types import StringType, DoubleType, StructField
 
 from keras.models import model_from_yaml
 
 from .spark_model import SparkModel
-from .utils.rdd_utils import from_vector, to_vector
+from .utils.rdd_utils import from_vector
 from .ml.adapter import df_to_simple_rdd
-from .ml.params import *
+from .ml.params import HasCategoricalLabels
+from .ml.params import HasValidationSplit
+from .ml.params import HasKerasModelConfig
+from .ml.params import HasMode
+from .ml.params import HasEpochs
+from .ml.params import HasBatchSize
+from .ml.params import HasFrequency
+from .ml.params import HasVerbosity
+from .ml.params import HasNumberOfClasses
+from .ml.params import HasNumberOfWorkers
+from .ml.params import HasOptimizerConfig
 from .optimizers import get
 
 
