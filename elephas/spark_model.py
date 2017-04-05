@@ -285,7 +285,7 @@ class AsynchronousSparkWorker(object):
 
         nb_epoch = self.train_config['nb_epoch']
         batch_size = self.train_config.get('batch_size')
-        nb_train_sample = len(x_train[0])
+        nb_train_sample = x_train.shape[0]
         nb_batch = int(np.ceil(nb_train_sample/float(batch_size)))
         index_array = np.arange(nb_train_sample)
         batches = [(i*batch_size, min(nb_train_sample, (i+1)*batch_size)) for i in range(0, nb_batch)]
