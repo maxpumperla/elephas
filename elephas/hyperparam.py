@@ -7,7 +7,6 @@ import numpy as np
 from keras.models import model_from_yaml
 import six.moves.cPickle as pickle
 from six.moves import range
-
 # depend on hyperas, boto etc. is optional
 
 
