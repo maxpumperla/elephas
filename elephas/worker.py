@@ -44,7 +44,9 @@ class AsynchronousSparkWorker(object):
     '''
     Asynchronous Spark worker. This code will be executed on workers.
     '''
-    def __init__(self, yaml, ps_connector, train_config, frequency, master_optimizer, master_loss, master_metrics, custom_objects):
+    def __init__(self, yaml, ps_connector, train_config, frequency,
+                 master_optimizer, master_loss, master_metrics,
+                 custom_objects):
         self.yaml = yaml
         self.train_config = train_config
         self.frequency = frequency
@@ -73,8 +75,10 @@ class AsynchronousSparkWorker(object):
         nb_train_sample = x_train.shape[0]
         nb_batch = int(np.ceil(nb_train_sample / float(batch_size)))
         index_array = np.arange(nb_train_sample)
-        batches = [(i * batch_size, min(nb_train_sample, (i + 1) * batch_size)) for i in range(0, nb_batch)]
-
+        batches = [
+            (i * batch_size, min(nb_train_sample, (i + 1) * batch_size))
+            for i in range(0, nb_batch)
+        ]
         self.connector = SocketConnector()
 
         if self.frequency == 'epoch':
