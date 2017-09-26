@@ -22,6 +22,7 @@ from .mllib.adapter import to_matrix, from_matrix, to_vector, from_vector
 from .optimizers import SGD as default_optimizer
 
 from keras.models import model_from_yaml
+from keras import constraints
 
 def get_server_weights(master_url='localhost:5000'):
     '''
@@ -152,13 +153,21 @@ class SparkModel(object):
             delta = pickle.loads(request.data)
             if self.mode == 'asynchronous':
                 self.lock.acquire_write()
-            constraints = self.master_network.constraints
+
+            if not self.master_network.built:
+                self.master_network.build()
+
+            constraints = self.master_network.model.constraints
+
             if len(constraints) == 0:
                 def empty(a): return a
                 constraints = [empty for x in self.weights]
+
             self.weights = self.optimizer.get_updates(self.weights, constraints, delta)
+
             if self.mode == 'asynchronous':
                 self.lock.release()
+
             return 'Update done'
 
         self.app.run(host='0.0.0.0', debug=True,
@@ -294,7 +303,7 @@ class AsynchronousSparkWorker(object):
             for epoch in range(nb_epoch):
                 weights_before_training = get_server_weights(self.master_url)
                 model.set_weights(weights_before_training)
-                self.train_config['nb_epoch'] = 1
+                self.train_config['epochs'] = 1
                 if x_train.shape[0] > batch_size:
                     model.fit(x_train, y_train, **self.train_config)
                 weights_after_training = model.get_weights()
