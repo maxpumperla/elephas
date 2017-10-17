@@ -145,7 +145,7 @@ from elephas import optimizers as elephas_optimizers
 
 adagrad = elephas_optimizers.Adagrad()
 spark_model = SparkModel(sc,model, optimizer=adagrad, frequency='epoch', mode='asynchronous', num_workers=2)
-spark_model.train(rdd, nb_epoch=20, batch_size=32, verbose=0, validation_split=0.1, num_workers=8)
+spark_model.train(rdd, nb_epoch=20, batch_size=32, verbose=0, validation_split=0.1)
 ```
 
 - Run your script using spark-submit
