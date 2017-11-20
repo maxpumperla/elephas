@@ -3,7 +3,7 @@ from __future__ import absolute_import, print_function
 import numpy as np
 
 from pyspark.ml.param.shared import HasInputCol, HasOutputCol, HasFeaturesCol, HasLabelCol
-from pyspark.ml.util import keyword_only
+from pyspark import keyword_only
 from pyspark.sql import Row
 from pyspark.ml import Estimator, Model
 from pyspark.sql.types import StringType, DoubleType, StructField
