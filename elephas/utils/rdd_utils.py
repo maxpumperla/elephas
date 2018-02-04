@@ -49,7 +49,7 @@ def from_labeled_point(rdd, categorical=False, nb_classes=None):
 def encode_label(label, nb_classes):
     ''' one-hot encoding of a label '''
     encoded = np.zeros(nb_classes)
-    encoded[label] = 1.
+    encoded[int(label)] = 1.
     return encoded
 
 
