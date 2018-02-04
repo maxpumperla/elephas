@@ -22,7 +22,7 @@ from .mllib.adapter import to_matrix, from_matrix, to_vector, from_vector
 from .optimizers import SGD as default_optimizer
 
 from keras.models import model_from_yaml
-from keras import constraints
+from keras.constraints import Constraint
 
 def get_server_weights(master_url='localhost:5000'):
     '''
@@ -157,11 +157,8 @@ class SparkModel(object):
             if not self.master_network.built:
                 self.master_network.build()
 
-            constraints = self.master_network.model.constraints
-
-            if len(constraints) == 0:
-                def empty(a): return a
-                constraints = [empty for x in self.weights]
+            base_constraint = lambda a: a
+            constraints = [base_constraint for x in self.weights]
 
             self.weights = self.optimizer.get_updates(self.weights, constraints, delta)
 

@@ -6,8 +6,11 @@ not by one of the backends (Theano or Tensorflow).
 '''
 from __future__ import absolute_import
 from keras import backend as K
+from keras.optimizers import TFOptimizer
+from keras.utils import deserialize_keras_object, serialize_keras_object
 import numpy as np
-
+import six
+import tensorflow as tf
 from six.moves import zip
 
 
@@ -59,7 +62,7 @@ class Optimizer(object):
 
     def get_config(self):
         ''' Get configuration dictionary '''
-        return {"name": self.__class__.__name__}
+        return {"class_name": self.__class__.__name__}
 
 
 class SGD(Optimizer):
@@ -90,7 +93,7 @@ class SGD(Optimizer):
         return new_weights
 
     def get_config(self):
-        return {"name": self.__class__.__name__,
+        return {"class_name": self.__class__.__name__,
                 "lr": float(self.lr),
                 "momentum": float(self.momentum),
                 "decay": float(self.decay),
@@ -121,7 +124,7 @@ class RMSprop(Optimizer):
         return new_weights
 
     def get_config(self):
-        return {"name": self.__class__.__name__,
+        return {"class_name": self.__class__.__name__,
                 "lr": float(self.lr),
                 "rho": float(self.rho),
                 "epsilon": self.epsilon}
@@ -147,7 +150,7 @@ class Adagrad(Optimizer):
         return new_weights
 
     def get_config(self):
-        return {"name": self.__class__.__name__,
+        return {"class_name": self.__class__.__name__,
                 "lr": float(self.lr),
                 "epsilon": self.epsilon}
 
@@ -180,7 +183,7 @@ class Adadelta(Optimizer):
         return new_weights
 
     def get_config(self):
-        return {"name": self.__class__.__name__,
+        return {"class_name": self.__class__.__name__,
                 "lr": float(self.lr),
                 "rho": self.rho,
                 "epsilon": self.epsilon}
@@ -216,7 +219,7 @@ class Adam(Optimizer):
         return new_weights
 
     def get_config(self):
-        return {"name": self.__class__.__name__,
+        return {"class_name": self.__class__.__name__,
                 "lr": float(self.lr),
                 "beta_1": self.beta_1,
                 "beta_2": self.beta_2,
@@ -249,10 +252,7 @@ def deserialize(config, custom_objects=None):
         'rmsprop': RMSprop,
         'adagrad': Adagrad,
         'adadelta': Adadelta,
-        'adam': Adam,
-        'adamax': Adamax,
-        'nadam': Nadam,
-        'tfoptimizer': TFOptimizer,
+        'adam': Adam
     }
     # Make deserialization case-insensitive for built-in optimizers.
     if config['class_name'].lower() in all_classes:
