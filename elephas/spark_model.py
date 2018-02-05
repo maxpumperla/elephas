@@ -22,7 +22,7 @@ from .mllib.adapter import to_matrix, from_matrix, to_vector, from_vector
 from .optimizers import SGD as default_optimizer
 
 from keras.models import model_from_yaml
-from keras.constraints import Constraint
+
 
 def get_server_weights(master_url='localhost:5000'):
     '''
