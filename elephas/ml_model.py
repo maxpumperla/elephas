@@ -26,21 +26,15 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
     Returns a trained model in form of a SparkML Model, which is also a Transformer.
     '''
     @keyword_only
-    def __init__(self, keras_model_config=None, featuresCol=None, labelCol=None, optimizer_config=None, mode=None,
-                 frequency=None, num_workers=None, nb_epoch=None, batch_size=None, verbose=None, validation_split=None,
-                 categorical=None, nb_classes=None, outputCol=None):
+    def __init__(self, **kwargs):
         super(ElephasEstimator, self).__init__()
-        kwargs = self.__init__._input_kwargs
         self.set_params(**kwargs)
 
     @keyword_only
-    def set_params(self, keras_model_config=None, featuresCol=None, labelCol=None, optimizer_config=None, mode=None,
-                   frequency=None, num_workers=None, nb_epoch=None, batch_size=None, verbose=None,
-                   validation_split=None, categorical=None, nb_classes=None, outputCol=None):
+    def set_params(self, **kwargs):
         '''
         Set all provided parameters, otherwise set defaults
         '''
-        kwargs = self.set_params._input_kwargs
         return self._set(**kwargs)
 
     def _fit(self, df):
@@ -52,7 +46,8 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
         simple_rdd = simple_rdd.repartition(self.get_num_workers())
         optimizer = None
         if self.get_optimizer_config() is not None:
-            optimizer = get(self.get_optimizer_config()['name'], self.get_optimizer_config())
+            optimizer = get({'class_name': self.get_optimizer_config()['class_name'],
+                             'config': self.get_optimizer_config()})
 
         keras_model = model_from_yaml(self.get_keras_model_config())
 
@@ -76,18 +71,16 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol):
     with which new feature data can be transformed into labels.
     '''
     @keyword_only
-    def __init__(self, labelCol=None, outputCol=None, keras_model_config=None, weights=None):
+    def __init__(self, **kwargs):
         super(ElephasTransformer, self).__init__()
-        kwargs = self.__init__._input_kwargs
         self.weights = kwargs.pop('weights')  # Strip model weights from parameters to init Transformer
         self.set_params(**kwargs)
 
     @keyword_only
-    def set_params(self, labelCol=None, outputCol=None, keras_model_config=None):
+    def set_params(self, **kwargs):
         '''
         Set all provided parameters, otherwise set defaults
         '''
-        kwargs = self.set_params._input_kwargs
         return self._set(**kwargs)
 
     def get_model(self):
