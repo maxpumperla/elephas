@@ -216,7 +216,10 @@ class SparkModel(object):
         elif self.mode == 'synchronous':
             init = self.master_network.get_weights()
             parameters = self.spark_context.broadcast(init)
-            worker = SparkWorker(yaml, parameters, train_config)
+            worker = SparkWorker(
+                yaml, parameters, train_config, 
+                self.master_optimizer, self.master_loss, self.master_metrics, self.custom_objects
+            )
             deltas = rdd.mapPartitions(worker.train).collect()
             new_parameters = self.master_network.get_weights()
             for delta in deltas:
