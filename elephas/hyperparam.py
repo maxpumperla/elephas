@@ -92,5 +92,7 @@ class HyperasWorker(object):
         rand_seed = np.random.randint(elem)
 
         base_minimizer(model=None, data=None, algo=algo, max_evals=self.max_evals,
-                       trials=trials, full_model_string=self.model_string, rseed=rand_seed)
+                       trials=trials, full_model_string=self.model_string, rseed=rand_seed,
+                       full_model_string=None, notebook_name=None,
+                       verbose=True, stack=3)
         yield trials
