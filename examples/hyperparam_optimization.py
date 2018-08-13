@@ -1,22 +1,21 @@
 from __future__ import print_function
 from __future__ import absolute_import
-from hyperopt import Trials, STATUS_OK, tpe
 
-from hyperas import optim
+from pyspark import SparkContext, SparkConf
+
+from hyperopt import STATUS_OK
 from hyperas.distributions import choice, uniform
 
 from elephas.hyperparam import HyperParamModel
 
-from pyspark import SparkContext, SparkConf
 
 def data():
-    '''
-    Data providing function:
+    """Data providing function:
 
     Make sure to have every relevant import statement included here and return data as
     used in model function below. This function is separated from model() so that hyperopt
     won't reload data for each evaluation run.
-    '''
+    """
     from keras.datasets import mnist
     from keras.utils import np_utils
     (X_train, y_train), (X_test, y_test) = mnist.load_data()
@@ -33,8 +32,7 @@ def data():
 
 
 def model(X_train, Y_train, X_test, Y_test):
-    '''
-    Model providing function:
+    """Model providing function:
 
     Create Keras model with double curly brackets dropped-in as needed.
     Return value has to be a valid python dictionary with two customary keys:
@@ -42,7 +40,7 @@ def model(X_train, Y_train, X_test, Y_test):
         - status: Just use STATUS_OK and see hyperopt documentation if not feasible
     The last one is optional, though recommended, namely:
         - model: specify the model just created so that we can later use it again.
-    '''
+    """
     from keras.models import Sequential
     from keras.layers.core import Dense, Dropout, Activation
     from keras.optimizers import RMSprop

@@ -11,9 +11,11 @@ from six.moves import range
 
 
 class HyperParamModel(object):
-    '''
-    HyperParamModel
-    '''
+    """HyperParamModel
+
+    Computes distributed hyper-parameter optimization using Hyperas and
+    Spark.
+    """
     def __init__(self, sc, num_workers=4):
         self.spark_context = sc
         self.num_workers = num_workers
@@ -26,7 +28,7 @@ class HyperParamModel(object):
         hyperas_worker = HyperasWorker(bc_model, bc_max_evals)
         dummy_rdd = self.spark_context.parallelize([i for i in range(1, 1000)])
         dummy_rdd = dummy_rdd.repartition(self.num_workers)
-        trials_list = dummy_rdd.mapPartitions(hyperas_worker.minimize).collect()
+        trials_list = dummy_rdd.mapPartitions(hyperas_worker._minimize).collect()
 
         return trials_list
 
@@ -72,11 +74,15 @@ class HyperParamModel(object):
 
 
 class HyperasWorker(object):
+    """ HyperasWorker
+
+    Executes hyper-parameter search on each worker and returns results.
+    """
     def __init__(self, bc_model, bc_max_evals):
         self.model_string = bc_model.value
         self.max_evals = bc_max_evals.value
 
-    def minimize(self, dummy_iterator):
+    def _minimize(self, dummy_iterator):
         trials = Trials()
         algo = rand.suggest
 
