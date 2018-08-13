@@ -54,26 +54,25 @@ class SparkModel(object):
             self.parameter_server = SocketServer(model_to_dict(self.master_network))
             self.connector = SocketClient()
 
-    def get_train_config(self, nb_epoch, batch_size,
+    @staticmethod
+    def get_train_config(nb_epoch, batch_size,
                          verbose, validation_split):
         """Get configuration of training parameters
         """
-        train_config = {}
-        train_config['nb_epoch'] = nb_epoch
-        train_config['batch_size'] = batch_size
-        train_config['verbose'] = verbose
-        train_config['validation_split'] = validation_split
+        train_config = {'nb_epoch': nb_epoch,
+                        'batch_size': batch_size,
+                        'verbose': verbose,
+                        'validation_split': validation_split}
         return train_config
 
     def get_config(self):
         """Get configuration of model parameters
         """
-        model_config = {}
-        model_config['model'] = self.master_network.get_config()
-        model_config['optimizer'] = self.optimizer.get_config()
-        model_config['mode'] = self.mode
-        model_config['frequency'] = self.frequency
-        model_config['num_workers'] = self.num_workers
+        model_config = {'model': self.master_network.get_config(),
+                        'optimizer': self.optimizer.get_config(),
+                        'mode': self.mode,
+                        'frequency': self.frequency,
+                        'num_workers': self.num_workers}
         return model_config
 
     @property
@@ -158,6 +157,7 @@ class SparkMLlibModel(SparkModel):
                  master_loss="categorical_crossentropy",
                  master_metrics=None,
                  custom_objects=None):
+        # TODO signature is wrong
         SparkModel.__init__(self, sc, master_network, optimizer, mode, frequency, num_workers,
                             master_optimizer=master_optimizer, master_loss=master_loss, master_metrics=master_metrics,
                             custom_objects=custom_objects)

@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 from hyperopt import STATUS_OK
 from hyperas.distributions import choice, uniform
+import six.moves.cPickle as pickle
 
 from elephas.hyperparam import HyperParamModel
 
@@ -52,7 +53,7 @@ def test_hyper_param_model(spark_context):
                   show_accuracy=True,
                   verbose=2,
                   validation_data=(X_test, Y_test))
-        score, acc = model.evaluate(X_test, Y_test, show_accuracy=True, verbose=0)
+        score, acc = model.evaluate(X_test, Y_test, verbose=0)
         print('Test accuracy:', acc)
         return {'loss': -acc, 'status': STATUS_OK, 'model': model.to_yaml(),
                 'weights': pickle.dumps(model.get_weights())}

@@ -23,6 +23,7 @@ def spark_context(request):
     quiet_py4j()
     return sc
 
+
 @pytest.fixture(scope="session")
 def sql_context(request):
     """ fixture for creating a Spark SQLContext
