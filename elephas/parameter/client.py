@@ -25,8 +25,8 @@ class BaseParameterClient(object):
 
 class HttpClient(BaseParameterClient):
 
-    def __init__(self):
-        self.master_url = determine_master()
+    def __init__(self, port=4000):
+        self.master_url = determine_master(port=port)
         self.headers = {'Content-Type': 'application/elephas'}
 
     def get_parameters(self):

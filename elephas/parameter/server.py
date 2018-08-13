@@ -27,11 +27,12 @@ class BaseParameterServer(object):
 
 class HttpServer(BaseParameterServer):
 
-    def __init__(self, master_network, optimizer, mode):
+    def __init__(self, master_network, optimizer, mode, port=4000):
         self.master_network = master_network
         self.mode = mode
         self.master_url = None
         self.optimizer = optimizer
+        self.port = port
 
         self.lock = Lock()
         self.pickled_weights = None
@@ -40,7 +41,7 @@ class HttpServer(BaseParameterServer):
     def start(self):
         self.server = Process(target=self.start_flask_service)
         self.server.start()
-        self.master_url = determine_master()
+        self.master_url = determine_master(self.port)
 
     def stop(self):
         self.server.terminate()
@@ -87,11 +88,12 @@ class HttpServer(BaseParameterServer):
                 self.lock.release()
             return 'Update done'
 
-        self.app.run(host='0.0.0.0', debug=True,
+        self.app.run(host='0.0.0.0', debug=True, port=self.port,
                      threaded=True, use_reloader=False)
 
 
-class SocketServer(object):
+class SocketServer(BaseParameterServer):
+
     def __init__(self, model, port=4000):
         self.model = dict_to_model(model)
         self.port = port
