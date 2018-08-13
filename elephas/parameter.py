@@ -4,7 +4,7 @@ from threading import Lock, Thread
 from .utils.sockets import determine_master
 from .utils.sockets import receive, send
 from .utils.serialization import dict_to_model
-from .utils.rwlock import RWLock
+from .utils.rwlock import RWLock as Lock
 
 import six.moves.cPickle as pickle
 from flask import Flask, request
@@ -45,7 +45,7 @@ class HttpConnector(BaseParameterServerConnector):
         '''
         Retrieve master weights from parameter server
         '''
-        request = urllib2.Request('http://{0}/parameters'.format(self.master_url),
+        request = urllib2.Request('http://{}/parameters'.format(self.master_url),
                                   headers={'Content-Type': 'application/elephas'})
         ret = urllib2.urlopen(request).read()
         weights = pickle.loads(ret)
@@ -54,7 +54,7 @@ class HttpConnector(BaseParameterServerConnector):
     def update_parameters(self, delta):
         '''Update master parameters with deltas from training process
         '''
-        request = urllib2.Request('http://{0}/update'.format(self.master_url),
+        request = urllib2.Request('http://{}/update'.format(self.master_url),
                                   pickle.dumps(delta, -1), headers={'Content-Type': 'application/elephas'})
         return urllib2.urlopen(request).read()
 
@@ -67,7 +67,7 @@ class HttpServer(BaseParameterServer):
         self.master_url = None
         self.optimizer = optimizer
 
-        self.lock = RWLock()
+        self.lock = Lock()
         self.pickled_weights = None
         self.weights = master_network.get_weights()
 
