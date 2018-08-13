@@ -64,3 +64,5 @@ examples/*.csv
 .idea/
 
 .pytest_cache
+
+test_env
