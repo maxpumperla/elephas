@@ -145,7 +145,7 @@ from elephas import optimizers as elephas_optimizers
 
 adagrad = elephas_optimizers.Adagrad()
 spark_model = SparkModel(sc,model, optimizer=adagrad, frequency='epoch', mode='asynchronous', num_workers=2)
-spark_model.train(rdd, nb_epoch=20, batch_size=32, verbose=0, validation_split=0.1, num_workers=8)
+spark_model.train(rdd, nb_epoch=20, batch_size=32, verbose=0, validation_split=0.1)
 ```
 
 - Run your script using spark-submit
@@ -247,7 +247,7 @@ Hyper-parameter optimization with elephas is based on [hyperas](https://github.c
 
 The first part of this example is more or less directly taken from the hyperas documentation. We define data and model as functions, hyper-parameter ranges are defined through braces. See the hyperas documentation for more on how this works.
 
-```{python}
+```python
 from __future__ import print_function
 from hyperopt import Trials, STATUS_OK, tpe
 from hyperas.distributions import choice, uniform
@@ -316,7 +316,7 @@ def model(X_train, Y_train, X_test, Y_test):
 
 Once the basic setup is defined, running the minimization is done in just a few lines of code:
 
-```{python}
+```python
 from hyperas import optim
 from elephas.hyperparam import HyperParamModel
 from pyspark import SparkContext, SparkConf
@@ -334,7 +334,7 @@ hyperparam_model.minimize(model=model, data=data, max_evals=5)
 
 Building on the last section, it is possible to train ensemble models with elephas by means of running hyper-parameter optimization on large search spaces and defining a resulting voting classifier on the top-n performing models. With ```data``` and ```model```` defined as above, this is a simple as running
 
-```{python}
+```python
 result = hyperparam_model.best_ensemble(nb_ensemble_models=10, model=model, data=data, max_evals=5)
 ```
 In this example an ensemble of 10 models is built, based on optimization of at most 5 runs on each of the Spark workers.

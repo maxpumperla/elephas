@@ -90,7 +90,54 @@ class SparkModel(object):
         self.parameter_server.start()
 
     def stop_server(self):
+<<<<<<< HEAD
         self.parameter_server.stop()
+=======
+        ''' Terminate parameter server'''
+        self.server.terminate()
+        self.server.join()
+
+    def start_service(self):
+        ''' Define service and run flask app'''
+        app = Flask(__name__)
+        self.app = app
+
+        @app.route('/')
+        def home():
+            return 'Elephas'
+
+        @app.route('/parameters', methods=['GET'])
+        def get_parameters():
+            if self.mode == 'asynchronous':
+                self.lock.acquire_read()
+            self.pickled_weights = pickle.dumps(self.weights, -1)
+            pickled_weights = self.pickled_weights
+            if self.mode == 'asynchronous':
+                self.lock.release()
+            return pickled_weights
+
+        @app.route('/update', methods=['POST'])
+        def update_parameters():
+            delta = pickle.loads(request.data)
+            if self.mode == 'asynchronous':
+                self.lock.acquire_write()
+
+            if not self.master_network.built:
+                self.master_network.build()
+
+            base_constraint = lambda a: a
+            constraints = [base_constraint for x in self.weights]
+
+            self.weights = self.optimizer.get_updates(self.weights, constraints, delta)
+
+            if self.mode == 'asynchronous':
+                self.lock.release()
+
+            return 'Update done'
+
+        self.app.run(host='0.0.0.0', debug=True,
+                     threaded=True, use_reloader=False)
+>>>>>>> master
 
     def predict(self, data):
         '''Get prediction probabilities for a numpy array of features
@@ -137,7 +184,10 @@ class SparkModel(object):
         elif self.mode == 'synchronous':
             init = self.master_network.get_weights()
             parameters = self.spark_context.broadcast(init)
-            worker = SparkWorker(yaml, parameters, train_config)
+            worker = SparkWorker(
+                yaml, parameters, train_config, 
+                self.master_optimizer, self.master_loss, self.master_metrics, self.custom_objects
+            )
             deltas = rdd.mapPartitions(worker.train).collect()
             new_parameters = self.master_network.get_weights()
             for delta in deltas:
@@ -148,6 +198,109 @@ class SparkModel(object):
             self.stop_server()
 
 
+<<<<<<< HEAD
+=======
+class SparkWorker(object):
+    '''
+    Synchronous Spark worker. This code will be executed on workers.
+    '''
+    def __init__(self, yaml, parameters, train_config, master_optimizer, master_loss, master_metrics, custom_objects):
+        self.yaml = yaml
+        self.parameters = parameters
+        self.train_config = train_config
+        self.master_optimizer = master_optimizer
+        self.master_loss = master_loss
+        self.master_metrics = master_metrics
+        self.custom_objects = custom_objects
+
+    def train(self, data_iterator):
+        '''
+        Train a keras model on a worker
+        '''
+        feature_iterator, label_iterator = tee(data_iterator, 2)
+        x_train = np.asarray([x for x, y in feature_iterator])
+        y_train = np.asarray([y for x, y in label_iterator])
+
+        model = model_from_yaml(self.yaml, self.custom_objects)
+        model.compile(optimizer=self.master_optimizer, loss=self.master_loss, metrics=self.master_metrics)
+        model.set_weights(self.parameters.value)
+        weights_before_training = model.get_weights()
+        if x_train.shape[0] > self.train_config.get('batch_size'):
+            model.fit(x_train, y_train, **self.train_config)
+        weights_after_training = model.get_weights()
+        deltas = subtract_params(weights_before_training, weights_after_training)
+        yield deltas
+
+
+class AsynchronousSparkWorker(object):
+    '''
+    Asynchronous Spark worker. This code will be executed on workers.
+    '''
+    def __init__(self, yaml, train_config, frequency, master_url, master_optimizer, master_loss, master_metrics, custom_objects):
+        self.yaml = yaml
+        self.train_config = train_config
+        self.frequency = frequency
+        self.master_url = master_url
+        self.master_optimizer = master_optimizer
+        self.master_loss = master_loss
+        self.master_metrics = master_metrics
+        self.custom_objects = custom_objects
+
+
+    def train(self, data_iterator):
+        '''
+        Train a keras model on a worker and send asynchronous updates
+        to parameter server
+        '''
+        feature_iterator, label_iterator = tee(data_iterator, 2)
+        x_train = np.asarray([x for x, y in feature_iterator])
+        y_train = np.asarray([y for x, y in label_iterator])
+
+        if x_train.size == 0:
+            return
+
+        model = model_from_yaml(self.yaml, self.custom_objects)
+        model.compile(optimizer=self.master_optimizer, loss=self.master_loss, metrics=self.master_metrics)
+
+        nb_epoch = self.train_config['nb_epoch']
+        batch_size = self.train_config.get('batch_size')
+        nb_train_sample = x_train.shape[0]
+        nb_batch = int(np.ceil(nb_train_sample/float(batch_size)))
+        index_array = np.arange(nb_train_sample)
+        batches = [(i*batch_size, min(nb_train_sample, (i+1)*batch_size)) for i in range(0, nb_batch)]
+
+        if self.frequency == 'epoch':
+            for epoch in range(nb_epoch):
+                weights_before_training = get_server_weights(self.master_url)
+                model.set_weights(weights_before_training)
+                self.train_config['epochs'] = 1
+                self.train_config['nb_epoch'] = 1
+                if x_train.shape[0] > batch_size:
+                    model.fit(x_train, y_train, **self.train_config)
+                self.train_config['nb_epoch'] = nb_epoch
+                weights_after_training = model.get_weights()
+                deltas = subtract_params(weights_before_training, weights_after_training)
+                put_deltas_to_server(deltas, self.master_url)
+        elif self.frequency == 'batch':
+            from keras.engine.training import slice_X
+            for epoch in range(nb_epoch):
+                if x_train.shape[0] > batch_size:
+                    for (batch_start, batch_end) in batches:
+                        weights_before_training = get_server_weights(self.master_url)
+                        model.set_weights(weights_before_training)
+                        batch_ids = index_array[batch_start:batch_end]
+                        X = slice_X(x_train, batch_ids)
+                        y = slice_X(y_train, batch_ids)
+                        model.train_on_batch(X, y)
+                        weights_after_training = model.get_weights()
+                        deltas = subtract_params(weights_before_training, weights_after_training)
+                        put_deltas_to_server(deltas, self.master_url)
+        else:
+            print('Choose frequency to be either batch or epoch')
+        yield []
+
+
+>>>>>>> master
 class SparkMLlibModel(SparkModel):
     '''
     MLlib model takes RDDs of LabeledPoints. Internally we just convert
