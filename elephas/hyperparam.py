@@ -21,11 +21,12 @@ class HyperParamModel(object):
         self.num_workers = num_workers
 
     def compute_trials(self, model, data, max_evals):
-        model_string = get_hyperopt_model_string(model, data)
-        bc_model = self.spark_context.broadcast(model_string)
-        bc_max_evals = self.spark_context.broadcast(max_evals)
+        model_string = get_hyperopt_model_string(model=model, data=data, functions=None, notebook_name=None,
+                                                 verbose=False, stack=3)
+        #bc_model = self.spark_context.broadcast(model_string)
+        #bc_max_evals = self.spark_context.broadcast(max_evals)
 
-        hyperas_worker = HyperasWorker(bc_model, bc_max_evals)
+        hyperas_worker = HyperasWorker(model_string, max_evals)
         dummy_rdd = self.spark_context.parallelize([i for i in range(1, 1000)])
         dummy_rdd = dummy_rdd.repartition(self.num_workers)
         trials_list = dummy_rdd.mapPartitions(hyperas_worker._minimize).collect()
@@ -33,6 +34,8 @@ class HyperParamModel(object):
         return trials_list
 
     def minimize(self, model, data, max_evals):
+        global best_model_yaml, best_model_weights
+
         trials_list = self.compute_trials(model, data, max_evals)
 
         best_val = 1e7
@@ -79,8 +82,8 @@ class HyperasWorker(object):
     Executes hyper-parameter search on each worker and returns results.
     """
     def __init__(self, bc_model, bc_max_evals):
-        self.model_string = bc_model.value
-        self.max_evals = bc_max_evals.value
+        self.model_string = bc_model
+        self.max_evals = bc_max_evals
 
     def _minimize(self, dummy_iterator):
         trials = Trials()
@@ -91,8 +94,7 @@ class HyperasWorker(object):
         random.seed(elem)
         rand_seed = np.random.randint(elem)
 
-        base_minimizer(model=None, data=None, algo=algo, max_evals=self.max_evals,
-                       trials=trials, full_model_string=self.model_string, rseed=rand_seed,
-                       full_model_string=None, notebook_name=None,
+        base_minimizer(model=None, data=None, functions=None, algo=algo, max_evals=self.max_evals,
+                       trials=trials, rseed=rand_seed, full_model_string=self.model_string, notebook_name=None,
                        verbose=True, stack=3)
         yield trials

@@ -1,6 +1,3 @@
-from __future__ import print_function
-from __future__ import absolute_import
-
 from pyspark import SparkContext, SparkConf
 
 from hyperopt import STATUS_OK

@@ -5,7 +5,6 @@ from hyperas.distributions import choice, uniform
 
 from elephas.hyperparam import HyperParamModel
 
-
 pytest.mark.usefixtures("spark_context")
 
 
