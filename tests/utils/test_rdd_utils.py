@@ -12,8 +12,8 @@ def test_to_simple_rdd(spark_context):
 
     assert rdd.count() == 5
     first = rdd.first()
-    first[0].shape == (1,10)
-    first[1] == 1.0
+    assert first[0].shape == (10,)
+    assert first[1] == 1.0
 
 
 def test_to_labeled_rdd_categorical(spark_context):
@@ -63,9 +63,9 @@ def test_encode_label():
     assert len(encoded) == nb_classes
     for i in range(10):
         if i == label:
-            encoded[i] == 1
+            assert encoded[i] == 1
         else:
-            encoded[i] == 0
+            assert encoded[i] == 0
 
 
 def test_lp_to_simple_rdd_categorical(spark_context):

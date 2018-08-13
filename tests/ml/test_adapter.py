@@ -1,7 +1,7 @@
 import numpy as np
+from elephas.ml import adapter
 import pytest
 pytest.mark.usefixtures("spark_context")
-from elephas.ml import adapter
 
 
 def test_to_data_frame(spark_context):
@@ -10,6 +10,7 @@ def test_to_data_frame(spark_context):
 
     data_frame = adapter.to_data_frame(spark_context, features, labels, categorical=False)
     assert data_frame.count() == 2
+
 
 def test_to_data_frame_cat(spark_context):
     features = np.ones((2, 10))
@@ -39,7 +40,6 @@ def test_from_data_frame_cat(spark_context):
     x, y = adapter.from_data_frame(data_frame, categorical=True, nb_classes=3)
     assert features.shape == x.shape
     assert labels.shape == y.shape
-
 
 
 def test_df_to_simple_rdd(spark_context):

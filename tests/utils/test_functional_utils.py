@@ -6,8 +6,8 @@ pytest.mark.usefixtures("spark_context")
 
 
 def test_add_params():
-    p1 = [np.ones((5, 5)) for i in range(10)]
-    p2 = [np.ones((5, 5)) for i in range(10)]
+    p1 = [np.ones((5, 5)) for _ in range(10)]
+    p2 = [np.ones((5, 5)) for _ in range(10)]
 
     res = functional_utils.add_params(p1, p2)
     assert len(res) == 10
@@ -17,8 +17,8 @@ def test_add_params():
 
 
 def test_subtract_params():
-    p1 = [np.ones((5, 5)) for i in range(10)]
-    p2 = [np.ones((5, 5)) for i in range(10)]
+    p1 = [np.ones((5, 5)) for _ in range(10)]
+    p2 = [np.ones((5, 5)) for _ in range(10)]
 
     res = functional_utils.subtract_params(p1, p2)
 
