@@ -8,14 +8,10 @@ import random
 from pyspark import SparkContext, SparkConf
 from pyspark.sql import SQLContext
 from pyspark.ml.feature import StringIndexer, StandardScaler
-from pyspark.mllib.evaluation import MulticlassMetrics
 from pyspark.ml import Pipeline
 
 from keras.models import Sequential
 from keras.layers.core import Dense, Dropout, Activation
-from keras.layers.normalization import BatchNormalization
-from keras.layers.advanced_activations import PReLU
-from keras.utils import np_utils, generic_utils
 
 from elephas.ml_model import ElephasEstimator
 from elephas import optimizers as elephas_optimizers
@@ -94,7 +90,6 @@ estimator.set_nb_classes(nb_classes)
 pipeline = Pipeline(stages=[string_indexer, scaler, estimator])
 fitted_pipeline = pipeline.fit(train_df)
 
-from pyspark.mllib.evaluation import MulticlassMetrics
 # Evaluate Spark model
 
 prediction = fitted_pipeline.transform(train_df)
