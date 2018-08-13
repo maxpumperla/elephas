@@ -13,10 +13,9 @@ from .parameter.connector import HttpConnector, SocketConnector
 
 
 class SparkModel(object):
-    '''
-    SparkModel is the main abstraction of elephas. Every other model
+    """SparkModel is the main abstraction of elephas. Every other model
     should inherit from it.
-    '''
+    """
     # TODO: Eliminate Spark context (only used for first broadcast, can be extracted)
     def __init__(self, sc, master_network, optimizer=None,
                  mode='asynchronous', frequency='epoch',
@@ -58,9 +57,8 @@ class SparkModel(object):
 
     def get_train_config(self, nb_epoch, batch_size,
                          verbose, validation_split):
-        '''
-        Get configuration of training parameters
-        '''
+        """Get configuration of training parameters
+        """
         train_config = {}
         train_config['nb_epoch'] = nb_epoch
         train_config['batch_size'] = batch_size
@@ -69,13 +67,14 @@ class SparkModel(object):
         return train_config
 
     def get_config(self):
-        '''
-        Get configuration of model parameters
-        '''
+        """Get configuration of model parameters
+        """
         model_config = {}
         model_config['model'] = self.master_network.get_config()
         model_config['optimizer'] = self.optimizer.get_config()
         model_config['mode'] = self.mode
+        model_config['frequency'] = self.frequency
+        model_config['num_workers'] = self.num_workers
         return model_config
 
     @property
@@ -91,47 +90,6 @@ class SparkModel(object):
 
     def stop_server(self):
         self.parameter_server.stop()
-
-    def start_service(self):
-        ''' Define service and run flask app'''
-        app = Flask(__name__)
-        self.app = app
-
-        @app.route('/')
-        def home():
-            return 'Elephas'
-
-        @app.route('/parameters', methods=['GET'])
-        def get_parameters():
-            if self.mode == 'asynchronous':
-                self.lock.acquire_read()
-            self.pickled_weights = pickle.dumps(self.weights, -1)
-            pickled_weights = self.pickled_weights
-            if self.mode == 'asynchronous':
-                self.lock.release()
-            return pickled_weights
-
-        @app.route('/update', methods=['POST'])
-        def update_parameters():
-            delta = pickle.loads(request.data)
-            if self.mode == 'asynchronous':
-                self.lock.acquire_write()
-
-            if not self.master_network.built:
-                self.master_network.build()
-
-            base_constraint = lambda a: a
-            constraints = [base_constraint for x in self.weights]
-
-            self.weights = self.optimizer.get_updates(self.weights, constraints, delta)
-
-            if self.mode == 'asynchronous':
-                self.lock.release()
-
-            return 'Update done'
-
-        self.app.run(host='0.0.0.0', debug=True,
-                     threaded=True, use_reloader=False)
 
     def predict(self, data):
         '''Get prediction probabilities for a numpy array of features
@@ -187,16 +145,17 @@ class SparkModel(object):
             for delta in deltas:
                 constraints = self.master_network.constraints
                 new_parameters = self.optimizer.get_updates(self.weights, constraints, delta)
+        else:
+            raise ValueError("Unsupported mode {}".format(self.mode))
         self.master_network.set_weights(new_parameters)
         if self.mode in ['asynchronous', 'hogwild']:
             self.stop_server()
 
 
 class SparkMLlibModel(SparkModel):
-    '''
-    MLlib model takes RDDs of LabeledPoints. Internally we just convert
+    """MLlib model takes RDDs of LabeledPoints. Internally we just convert
     back to plain old pair RDDs and continue as in SparkModel
-    '''
+    """
     def __init__(self, sc, master_network, optimizer=None, mode='asynchronous', frequency='epoch', num_workers=4,
                  master_optimizer="adam",
                  master_loss="categorical_crossentropy",
@@ -208,20 +167,18 @@ class SparkMLlibModel(SparkModel):
 
     def train(self, labeled_points, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1,
               categorical=False, nb_classes=None):
-        '''
-        Train an elephas model on an RDD of LabeledPoints
-        '''
+        """Train an elephas model on an RDD of LabeledPoints
+        """
         rdd = lp_to_simple_rdd(labeled_points, categorical, nb_classes)
         rdd = rdd.repartition(self.num_workers)
         self._train(rdd, nb_epoch, batch_size, verbose, validation_split)
 
     def predict(self, mllib_data):
-        '''
-        Predict probabilities for an RDD of features
-        '''
+        """Predict probabilities for an RDD of features
+        """
         if isinstance(mllib_data, pyspark.mllib.linalg.Matrix):
             return to_matrix(self.master_network.predict(from_matrix(mllib_data)))
         elif isinstance(mllib_data, pyspark.mllib.linalg.Vector):
             return to_vector(self.master_network.predict(from_vector(mllib_data)))
         else:
-            print('Provide either an MLLib matrix or vector')
+            raise ValueError('Provide either an MLLib matrix or vector, got {}'.format(mllib_data.__name__))
