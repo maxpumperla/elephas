@@ -3,11 +3,10 @@ from pyspark.ml.param.shared import Param, Params
 
 
 class HasKerasModelConfig(Params):
-    '''
-    Mandatory field:
+    """Mandatory field:
 
     Parameter mixin for Keras model yaml
-    '''
+    """
     def __init__(self):
         super(HasKerasModelConfig, self).__init__()
         self.keras_model_config = Param(self, "keras_model_config", "Serialized Keras model as yaml string")
@@ -21,9 +20,8 @@ class HasKerasModelConfig(Params):
 
 
 class HasOptimizerConfig(Params):
-    '''
-    Parameter mixin for Elephas optimizer config
-    '''
+    """Parameter mixin for Elephas optimizer config
+    """
     def __init__(self):
         super(HasOptimizerConfig, self).__init__()
         self.optimizer_config = Param(self, "optimizer_config", "Serialized Elephas optimizer properties")
@@ -37,9 +35,8 @@ class HasOptimizerConfig(Params):
 
 
 class HasMode(Params):
-    '''
-    Parameter mixin for Elephas mode
-    '''
+    """Parameter mixin for Elephas mode
+    """
     def __init__(self):
         super(HasMode, self).__init__()
         self.mode = Param(self, "mode", "Elephas mode")
@@ -54,9 +51,8 @@ class HasMode(Params):
 
 
 class HasFrequency(Params):
-    '''
-    Parameter mixin for Elephas frequency
-    '''
+    """Parameter mixin for Elephas frequency
+    """
     def __init__(self):
         super(HasFrequency, self).__init__()
         self.frequency = Param(self, "frequency", "Elephas frequency")
@@ -71,11 +67,10 @@ class HasFrequency(Params):
 
 
 class HasNumberOfClasses(Params):
-    '''
-    Mandatory:
+    """Mandatory:
 
     Parameter mixin for number of classes
-    '''
+    """
     def __init__(self):
         super(HasNumberOfClasses, self).__init__()
         self.nb_classes = Param(self, "nb_classes", "number of classes")
@@ -90,11 +85,10 @@ class HasNumberOfClasses(Params):
 
 
 class HasCategoricalLabels(Params):
-    '''
-    Mandatory:
+    """Mandatory:
 
     Parameter mixin for setting categorical features
-    '''
+    """
     def __init__(self):
         super(HasCategoricalLabels, self).__init__()
         self.categorical = Param(self, "categorical", "Boolean to indicate if labels are categorical")
@@ -109,9 +103,8 @@ class HasCategoricalLabels(Params):
 
 
 class HasEpochs(Params):
-    '''
-    Parameter mixin for number of epochs
-    '''
+    """Parameter mixin for number of epochs
+    """
     def __init__(self):
         super(HasEpochs, self).__init__()
         self.nb_epoch = Param(self, "nb_epoch", "Number of epochs to train")
@@ -126,9 +119,8 @@ class HasEpochs(Params):
 
 
 class HasBatchSize(Params):
-    '''
-    Parameter mixin for batch size
-    '''
+    """Parameter mixin for batch size
+    """
     def __init__(self):
         super(HasBatchSize, self).__init__()
         self.batch_size = Param(self, "batch_size", "Batch size")
@@ -143,9 +135,8 @@ class HasBatchSize(Params):
 
 
 class HasVerbosity(Params):
-    '''
-    Parameter mixin for output verbosity
-    '''
+    """Parameter mixin for output verbosity
+    """
     def __init__(self):
         super(HasVerbosity, self).__init__()
         self.verbose = Param(self, "verbose", "Stdout verbosity")
@@ -160,9 +151,8 @@ class HasVerbosity(Params):
 
 
 class HasValidationSplit(Params):
-    '''
-    Parameter mixin for validation split percentage
-    '''
+    """Parameter mixin for validation split percentage
+    """
     def __init__(self):
         super(HasValidationSplit, self).__init__()
         self.validation_split = Param(self, "validation_split", "validation split percentage")
@@ -177,9 +167,8 @@ class HasValidationSplit(Params):
 
 
 class HasNumberOfWorkers(Params):
-    '''
-    Parameter mixin for number of workers
-    '''
+    """Parameter mixin for number of workers
+    """
     def __init__(self):
         super(HasNumberOfWorkers, self).__init__()
         self.num_workers = Param(self, "num_workers", "number of workers")

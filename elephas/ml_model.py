@@ -52,7 +52,7 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
         Private fit method of the Estimator, which trains the model.
         '''
         simple_rdd = df_to_simple_rdd(df, categorical=self.get_categorical_labels(), nb_classes=self.get_nb_classes(),
-                                      featuresCol=self.getFeaturesCol(), labelCol=self.getLabelCol())
+                                      features_col=self.getFeaturesCol(), label_col=self.getLabelCol())
         simple_rdd = simple_rdd.repartition(self.get_num_workers())
         optimizer = None
         if self.get_optimizer_config() is not None:
