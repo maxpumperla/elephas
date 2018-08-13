@@ -1,14 +1,14 @@
 import numpy as np
 from itertools import tee
-
-from .utils.functional_utils import subtract_params
 from keras.models import model_from_yaml
-from .parameter.client import SocketClient
+
+from .utils import subtract_params
+from .parameter import SocketClient
 
 
 class SparkWorker(object):
-    '''Synchronous Spark worker. This code will be executed on workers.
-    '''
+    """Synchronous Spark worker. This code will be executed on workers.
+    """
     def __init__(self, yaml, parameters, train_config, master_optimizer,
                  master_loss, master_metrics, custom_objects):
         self.yaml = yaml
@@ -20,9 +20,8 @@ class SparkWorker(object):
         self.custom_objects = custom_objects
 
     def train(self, data_iterator):
-        '''
-        Train a keras model on a worker
-        '''
+        """Train a keras model on a worker
+        """
         feature_iterator, label_iterator = tee(data_iterator, 2)
         x_train = np.asarray([x for x, y in feature_iterator])
         y_train = np.asarray([y for x, y in label_iterator])
@@ -41,9 +40,8 @@ class SparkWorker(object):
 
 
 class AsynchronousSparkWorker(object):
-    '''
-    Asynchronous Spark worker. This code will be executed on workers.
-    '''
+    """Asynchronous Spark worker. This code will be executed on workers.
+    """
     def __init__(self, yaml, ps_connector, train_config, frequency,
                  master_optimizer, master_loss, master_metrics,
                  custom_objects):
@@ -56,10 +54,9 @@ class AsynchronousSparkWorker(object):
         self.custom_objects = custom_objects
 
     def train(self, data_iterator):
-        '''
-        Train a keras model on a worker and send asynchronous updates
+        """Train a keras model on a worker and send asynchronous updates
         to parameter server
-        '''
+        """
         feature_iterator, label_iterator = tee(data_iterator, 2)
         x_train = np.asarray([x for x, y in feature_iterator])
         y_train = np.asarray([y for x, y in label_iterator])
@@ -106,5 +103,5 @@ class AsynchronousSparkWorker(object):
                         deltas = subtract_params(weights_before_training, weights_after_training)
                         self.connector.update_parameters(deltas)
         else:
-            print('Choose frequency to be either batch or epoch')
+            raise ValueError('frequency parameter can be `epoch` or `batch, got {}'.format(self.frequency))
         yield []

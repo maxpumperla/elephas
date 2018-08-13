@@ -3,13 +3,13 @@ from __future__ import print_function
 
 import pyspark
 
-from .utils.rdd_utils import lp_to_simple_rdd
-from .utils.serialization import model_to_dict
-from .mllib.adapter import to_matrix, from_matrix, to_vector, from_vector
+from .utils import lp_to_simple_rdd
+from .utils import model_to_dict
+from .mllib import to_matrix, from_matrix, to_vector, from_vector
 from .optimizers import SGD as default_optimizer
 from .worker import AsynchronousSparkWorker, SparkWorker
-from .parameter.server import HttpServer, SocketServer
-from .parameter.client import HttpClient, SocketClient
+from .parameter import HttpServer, SocketServer
+from .parameter import HttpClient, SocketClient
 
 
 class SparkModel(object):
