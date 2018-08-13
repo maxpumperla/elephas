@@ -30,7 +30,7 @@ class SparkWorker(object):
         model.compile(optimizer=self.master_optimizer,
                       loss=self.master_loss,
                       metrics=self.master_metrics)
-        model.set_weights(self.parameters.value)
+        model.set_weights(self.parameters)
         weights_before_training = model.get_weights()
         if x_train.shape[0] > self.train_config.get('batch_size'):
             model.fit(x_train, y_train, **self.train_config)
@@ -42,7 +42,7 @@ class SparkWorker(object):
 class AsynchronousSparkWorker(object):
     """Asynchronous Spark worker. This code will be executed on workers.
     """
-    def __init__(self, yaml, ps_connector, train_config, frequency,
+    def __init__(self, yaml, client_mode, train_config, frequency,
                  master_optimizer, master_loss, master_metrics,
                  custom_objects):
         self.yaml = yaml

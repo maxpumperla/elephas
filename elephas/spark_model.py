@@ -17,7 +17,7 @@ class SparkModel(object):
     should inherit from it.
     """
     # TODO: Eliminate Spark context (only used for first broadcast, can be extracted)
-    def __init__(self, sc, master_network, optimizer=None,
+    def __init__(self, master_network, optimizer=None,
                  mode='asynchronous', frequency='epoch',
                  num_workers=4,
                  master_optimizer="sgd",  # TODO: other default
@@ -27,7 +27,6 @@ class SparkModel(object):
                  parameter_server='http',
                  *args, **kwargs):
 
-        self.spark_context = sc
         self._master_network = master_network
         if custom_objects is None:
             custom_objects = {}
@@ -47,7 +46,7 @@ class SparkModel(object):
         self.master_metrics = master_metrics
         self.custom_objects = custom_objects
 
-        # TODO: connector has to be initialized on workers
+        # TODO: clients have to be initialized on workers. Only init servers here, clients on workers
         if parameter_server == 'http':
             self.parameter_server = HttpServer(self.master_network, self.optimizer, self.mode)
             self.connector = HttpClient()
@@ -92,20 +91,20 @@ class SparkModel(object):
         self.parameter_server.stop()
 
     def predict(self, data):
-        '''Get prediction probabilities for a numpy array of features
-        '''
+        """Get prediction probabilities for a numpy array of features
+        """
         return self.master_network.predict(data)
 
     def predict_classes(self, data):
-        '''Predict classes for a numpy array of features
-        '''
+        """ Predict classes for a numpy array of features
+        """
         return self.master_network.predict_classes(data)
 
     def train(self, rdd, nb_epoch=10, batch_size=32,
               verbose=0, validation_split=0.1):
         # TODO: Make dataframe the standard, but support RDDs as well
-        '''Train an elephas model.
-        '''
+        """Train an elephas model.
+        """
         rdd = rdd.repartition(self.num_workers)
 
         if self.mode in ['asynchronous', 'synchronous', 'hogwild']:
@@ -115,9 +114,8 @@ class SparkModel(object):
 
     def _train(self, rdd, nb_epoch=10, batch_size=32, verbose=0,
                validation_split=0.1):
-        '''
-        Protected train method to make wrapping of modes easier
-        '''
+        """Protected train method to make wrapping of modes easier
+        """
         self.master_network.compile(optimizer=self.master_optimizer,
                                     loss=self.master_loss,
                                     metrics=self.master_metrics)
@@ -134,10 +132,9 @@ class SparkModel(object):
             rdd.mapPartitions(worker.train).collect()
             new_parameters = self.connector.get_parameters()
         elif self.mode == 'synchronous':
-            init = self.master_network.get_weights()
-            parameters = self.spark_context.broadcast(init)
+            parameters = self.master_network.get_weights()
             worker = SparkWorker(
-                yaml, parameters, train_config, 
+                yaml, parameters, train_config,
                 self.master_optimizer, self.master_loss, self.master_metrics, self.custom_objects
             )
             deltas = rdd.mapPartitions(worker.train).collect()
