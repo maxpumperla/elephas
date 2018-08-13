@@ -30,17 +30,17 @@ class HttpClient(BaseParameterClient):
         self.headers = {'Content-Type': 'application/elephas'}
 
     def get_parameters(self):
-        '''Retrieve master weights from parameter server
-        '''
-        request = urllib2.Request('http://{0}/parameters'.format(self.master_url),
+        """Retrieve master weights from parameter server
+        """
+        request = urllib2.Request('http://{}/parameters'.format(self.master_url),
                                   headers=self.headers)
         pickled_weights = urllib2.urlopen(request).read()
         return pickle.loads(pickled_weights)
 
     def update_parameters(self, delta):
-        '''Update master parameters with deltas from training process
-        '''
-        request = urllib2.Request('http://{0}/update'.format(self.master_url),
+        """Update master parameters with deltas from training process
+        """
+        request = urllib2.Request('http://{}/update'.format(self.master_url),
                                   pickle.dumps(delta, -1), headers=self.headers)
         return urllib2.urlopen(request).read()
 
@@ -61,6 +61,6 @@ class SocketClient(BaseParameterClient):
         # data['worker_id'] = self.get_worker_id()
         data['delta'] = delta
         self.socket.sendall(b'u')
-        print('>>> Start sending delta to socket')
+        # print('>>> Start sending delta to socket')
         send(self.socket, data)
-        print('>>> Done')
+        # print('>>> Done')

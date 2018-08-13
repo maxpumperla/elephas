@@ -10,6 +10,11 @@ from six.moves import zip
 def to_simple_rdd(sc, features, labels):
     """Convert numpy arrays of features and labels into
     an RDD of pairs.
+
+    :param sc: Spark context
+    :param features: numpy array with features
+    :param labels: numpy array with labels
+    :return: Spark RDD with feature-label pairs
     """
     pairs = [(x, y) for x, y in zip(features, labels)]
     return sc.parallelize(pairs)
@@ -17,7 +22,13 @@ def to_simple_rdd(sc, features, labels):
 
 def to_labeled_point(sc, features, labels, categorical=False):
     """Convert numpy arrays of features and labels into
-    a LabeledPoint RDD
+    a LabeledPoint RDD for MLlib and ML integration.
+
+    :param sc: Spark context
+    :param features: numpy array with features
+    :param labels: numpy array with labels
+    :param categorical: boolean, whether labels are already one-hot encoded or not
+    :return: LabeledPoint RDD with features and labels
     """
     labeled_points = []
     for x, y in zip(features, labels):
@@ -31,6 +42,11 @@ def to_labeled_point(sc, features, labels, categorical=False):
 
 def from_labeled_point(rdd, categorical=False, nb_classes=None):
     """Convert a LabeledPoint RDD back to a pair of numpy arrays
+
+    :param rdd: LabeledPoint RDD
+    :param categorical: boolean, if labels should be one-hot encode when returned
+    :param nb_classes: optional int, indicating the number of class labels
+    :return: pair of numpy arrays, features and labels
     """
     features = np.asarray(rdd.map(lambda lp: from_vector(lp.features)).collect())
     labels = np.asarray(rdd.map(lambda lp: lp.label).collect(), dtype='int32')
@@ -45,7 +61,12 @@ def from_labeled_point(rdd, categorical=False, nb_classes=None):
 
 
 def encode_label(label, nb_classes):
-    """One-hot encoding of a label """
+    """One-hot encoding of a single label
+
+    :param label: class label (int or double without floating point digits)
+    :param nb_classes: int, number of total classes
+    :return: one-hot encoded vector
+    """
     encoded = np.zeros(nb_classes)
     encoded[int(label)] = 1.
     return encoded
@@ -53,6 +74,11 @@ def encode_label(label, nb_classes):
 
 def lp_to_simple_rdd(lp_rdd, categorical=False, nb_classes=None):
     """Convert a LabeledPoint RDD into an RDD of feature-label pairs
+
+    :param lp_rdd: LabeledPoint RDD of features and labels
+    :param categorical: boolean, if labels should be one-hot encode when returned
+    :param nb_classes: int, number of total classes
+    :return: Spark RDD with feature-label pairs
     """
     if categorical:
         if not nb_classes:
