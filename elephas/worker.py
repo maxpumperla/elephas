@@ -3,7 +3,7 @@ from itertools import tee
 
 from .utils.functional_utils import subtract_params
 from keras.models import model_from_yaml
-from .parameter.connector import SocketConnector
+from .parameter.client import SocketClient
 
 
 class SparkWorker(object):
@@ -79,7 +79,7 @@ class AsynchronousSparkWorker(object):
             (i * batch_size, min(nb_train_sample, (i + 1) * batch_size))
             for i in range(0, nb_batch)
         ]
-        self.connector = SocketConnector()
+        self.connector = SocketClient()
 
         if self.frequency == 'epoch':
             for epoch in range(nb_epoch):

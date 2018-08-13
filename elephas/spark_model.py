@@ -9,7 +9,7 @@ from .mllib.adapter import to_matrix, from_matrix, to_vector, from_vector
 from .optimizers import SGD as default_optimizer
 from .worker import AsynchronousSparkWorker, SparkWorker
 from .parameter.server import HttpServer, SocketServer
-from .parameter.connector import HttpConnector, SocketConnector
+from .parameter.client import HttpClient, SocketClient
 
 
 class SparkModel(object):
@@ -50,10 +50,10 @@ class SparkModel(object):
         # TODO: connector has to be initialized on workers
         if parameter_server == 'http':
             self.parameter_server = HttpServer(self.master_network, self.optimizer, self.mode)
-            self.connector = HttpConnector()
+            self.connector = HttpClient()
         else:
             self.parameter_server = SocketServer(model_to_dict(self.master_network))
-            self.connector = SocketConnector()
+            self.connector = SocketClient()
 
     def get_train_config(self, nb_epoch, batch_size,
                          verbose, validation_split):

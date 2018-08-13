@@ -12,7 +12,7 @@ except ImportError:
 from ..utils.sockets import determine_master, send, receive
 
 
-class BaseParameterServerConnector(object):
+class BaseParameterClient(object):
     def __init__(self):
         raise NotImplementedError
 
@@ -23,7 +23,8 @@ class BaseParameterServerConnector(object):
         raise NotImplementedError
 
 
-class HttpConnector(BaseParameterServerConnector):
+class HttpClient(BaseParameterClient):
+
     def __init__(self):
         self.master_url = determine_master()
         self.headers = {'Content-Type': 'application/elephas'}
@@ -44,7 +45,8 @@ class HttpConnector(BaseParameterServerConnector):
         return urllib2.urlopen(request).read()
 
 
-class SocketConnector(BaseParameterServerConnector):
+class SocketClient(BaseParameterClient):
+
     def __init__(self, host='0.0.0.0', port=4000):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect((host, port))

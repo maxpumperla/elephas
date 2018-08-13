@@ -8,6 +8,7 @@ def determine_master(port=':5000'):
 
 def receive_all(socket, num_bytes):
     """Reads `num_bytes` bytes from the specified socket.
+
     # Arguments
         socket: Open socket.
         num_bytes: Number of bytes to read.
@@ -25,7 +26,8 @@ def receive_all(socket, num_bytes):
 
 
 def receive(socket, num_bytes=20):
-    """Fetch data frame from open socket
+    """Fetch data frame from open socket.
+
     # Arguments
         socket: Open socket.
         num_bytes: Number of bytes to read.
@@ -37,6 +39,7 @@ def receive(socket, num_bytes=20):
 
 def send(socket, data, num_bytes=20):
     """Send data to specified socket.
+
     # Arguments
         socket: socket. Opened socket.
         data: any. Data to send.
