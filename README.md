@@ -332,7 +332,7 @@ hyperparam_model.minimize(model=model, data=data, max_evals=5)
 
 ## Distributed training of ensemble models
 
-Building on the last section, it is possible to train ensemble models with elephas by means of running hyper-parameter optimization on large search spaces and defining a resulting voting classifier on the top-n performing models. With ```data``` and ```model```` defined as above, this is a simple as running
+Building on the last section, it is possible to train ensemble models with elephas by means of running hyper-parameter optimization on large search spaces and defining a resulting voting classifier on the top-n performing models. With ```data``` and ```model``` defined as above, this is a simple as running
 
 ```python
 result = hyperparam_model.best_ensemble(nb_ensemble_models=10, model=model, data=data, max_evals=5)
