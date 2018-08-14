@@ -1,5 +1,6 @@
 import numpy as np
 from itertools import tee
+from keras.utils.generic_utils import slice_arrays
 
 from .utils.serialization import dict_to_model
 from .utils import subtract_params
@@ -93,16 +94,15 @@ class AsynchronousSparkWorker(object):
                 deltas = subtract_params(weights_before_training, weights_after_training)
                 self.client.update_parameters(deltas)
         elif self.frequency == 'batch':
-            from keras.engine.training import slice_X
             for epoch in range(nb_epoch):
                 if x_train.shape[0] > batch_size:
                     for (batch_start, batch_end) in batches:
                         weights_before_training = self.client.get_parameters()
                         self.model.set_weights(weights_before_training)
                         batch_ids = index_array[batch_start:batch_end]
-                        X = slice_X(x_train, batch_ids)
-                        y = slice_X(y_train, batch_ids)
-                        self.model.train_on_batch(X, y)
+                        x = slice_arrays(x_train, batch_ids)
+                        y = slice_arrays(y_train, batch_ids)
+                        self.model.train_on_batch(x, y)
                         weights_after_training = self.model.get_weights()
                         deltas = subtract_params(weights_before_training, weights_after_training)
                         self.client.update_parameters(deltas)
