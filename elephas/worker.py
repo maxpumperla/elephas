@@ -55,17 +55,15 @@ class AsynchronousSparkWorker(object):
             raise ValueError("Parameter server mode has to be either `http` or `socket`, "
                              "got {}".format(parameter_server_mode))
 
-        self.client = parameter_server_mode
         self.train_config = train_config
         self.frequency = frequency
-        self.master_optimizer = master_optimizer
+        self.master_optimizer = "sgd"  # TODO master_optimizer
         self.master_loss = master_loss
         self.master_metrics = master_metrics
         self.yaml = yaml
         self.parameters = parameters
         self.custom_objects = custom_objects
         self.model = None
-
 
     def train(self, data_iterator):
         """Train a keras model on a worker and send asynchronous updates

@@ -2,14 +2,14 @@ from six.moves import cPickle as pickle
 from socket import gethostbyname, gethostname
 
 
-def determine_master(port=':4000'):
+def determine_master(port=4000):
     """Determine address of master so that workers
     can connect to it.
 
     :param port: port on which the application runs
     :return: Master address
     """
-    return str(gethostbyname(gethostname())) + str(port)
+    return gethostbyname(gethostname()) + ":" + str(port)
 
 
 def _receive_all(socket, num_bytes):
