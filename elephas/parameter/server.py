@@ -1,3 +1,4 @@
+import abc
 import socket
 from threading import Lock, Thread
 import six.moves.cPickle as pickle
@@ -11,14 +12,18 @@ from ..utils.rwlock import RWLock as Lock
 
 
 class BaseParameterServer(object):
+    __metaclass__ = abc.ABCMeta
+
     def __init__(self):
         raise NotImplementedError
 
+    @abc.abstractmethod
     def start(self):
         """Start the parameter server instance.
         """
         raise NotImplementedError
 
+    @abc.abstractmethod
     def stop(self):
         """Terminate the parameter server instance.
         """
@@ -38,8 +43,9 @@ class HttpServer(BaseParameterServer):
         self.pickled_weights = None
         self.weights = master_network.get_weights()
 
-    def start(self):
         self.server = Process(target=self.start_flask_service)
+
+    def start(self):
         self.server.start()
         self.master_url = determine_master(self.port)
 
@@ -155,7 +161,7 @@ class SocketServer(BaseParameterServer):
         while self.runs:
             get_or_update = conn.recv(1).decode()
             if get_or_update == 'u':
-                self.set_parameters(conn)
+                self.update_parameters(conn)
             elif get_or_update == 'g':
                 self.get_parameters(conn)
             else:
@@ -169,4 +175,4 @@ class SocketServer(BaseParameterServer):
                 thread.start()
                 self.connections.append(thread)
             except Exception:
-                pass
+                print("Failed to set up socket connection.")

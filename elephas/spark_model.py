@@ -116,20 +116,28 @@ class SparkModel(object):
         """
         return self.master_network.predict_classes(data)
 
-    def train(self, rdd, nb_epoch=10, batch_size=32,
-              verbose=0, validation_split=0.1):
-        # TODO: Make dataframe the standard, but support RDDs as well
-        """Train an elephas model.
+    def fit(self, rdd, epochs=10, batch_size=32,
+            verbose=0, validation_split=0.1):
+        """
+        Train an elephas model on an RDD. The Keras model configuration as specified
+        in the elephas model is sent to Spark workers, abd each worker will be trained
+        on their data partition.
+
+        :param rdd: RDD with features and labels
+        :param epochs: number of epochs used for training
+        :param batch_size: batch size used for training
+        :param verbose: logging verbosity level (0, 1 or 2)
+        :param validation_split: percentage of data set aside for validation
         """
         if self.num_workers:
             rdd = rdd.repartition(self.num_workers)
 
         if self.mode in ['asynchronous', 'synchronous', 'hogwild']:
-            self._train(rdd, nb_epoch, batch_size, verbose, validation_split)
+            self._fit(rdd, epochs, batch_size, verbose, validation_split)
         else:
             raise ValueError("Choose from one of the modes: asynchronous, synchronous or hogwild")
 
-    def _train(self, rdd, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1):
+    def _fit(self, rdd, epochs, batch_size, verbose, validation_split):
         """Protected train method to make wrapping of modes easier
         """
         self.master_network.compile(optimizer=self.master_optimizer,
@@ -138,7 +146,10 @@ class SparkModel(object):
         if self.mode in ['asynchronous', 'hogwild']:
             self.start_server()
         yaml = self.master_network.to_yaml()
-        train_config = self.get_train_config(nb_epoch, batch_size, verbose, validation_split)
+        train_config = self.get_train_config(epochs, batch_size, verbose, validation_split)
+        frequency = self.frequency
+
+
         if self.mode in ['asynchronous', 'hogwild']:
             worker = AsynchronousSparkWorker(
                 yaml, self.parameter_server_mode, train_config, self.frequency,
@@ -165,18 +176,31 @@ class SparkModel(object):
 
 
 class SparkMLlibModel(SparkModel):
-    """MLlib model takes RDDs of LabeledPoints. Internally we just convert
-    back to plain old pair RDDs and continue as in SparkModel
-    """
-    def __init__(self, master_network, optimizer=None, mode='asynchronous', frequency='epoch', num_workers=4,
-                 master_optimizer="adam",
-                 master_loss="categorical_crossentropy",
-                 master_metrics=None,
-                 custom_objects=None):
 
-        SparkModel.__init__(self, master_network, optimizer, mode, frequency, num_workers,
-                            master_optimizer=master_optimizer, master_loss=master_loss, master_metrics=master_metrics,
-                            custom_objects=custom_objects)
+    def __init__(self, master_network, optimizer=None, mode='asynchronous', frequency='epoch', num_workers=4,
+                 master_optimizer="adam", master_loss="categorical_crossentropy",
+                 master_metrics=None, custom_objects=None, parameter_server_mode='http',
+                 *args, **kwargs):
+        """SparkMLlibModel
+
+        The Spark MLlib model takes RDDs of LabeledPoints for training.
+
+        :param master_network: Keras model (not compiled)
+        :param optimizer: Elephas optimizer
+        :param mode: String, choose from `asynchronous`, `synchronous` and `hogwild`
+        :param frequency: String, either `epoch` or `batch`
+        :param num_workers: int, number of workers used for training (defaults to None)
+        :param master_optimizer: Keras optimizer for master network
+        :param master_loss: Keras loss function for master network
+        :param master_metrics: Keras metrics used for master network
+        :param custom_objects: Keras custom objects
+        :param parameter_server_mode: String, either `http` or `socket
+        """
+
+        SparkModel.__init__(self, master_network=master_network, optimizer=optimizer, mode=mode, frequency=frequency,
+                            num_workers=num_workers, master_optimizer=master_optimizer, master_loss=master_loss,
+                            master_metrics=master_metrics, custom_objects=custom_objects,
+                            parameter_server_mode=parameter_server_mode, *args, **kwargs)
 
     def train(self, labeled_points, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1,
               categorical=False, nb_classes=None):
@@ -184,7 +208,7 @@ class SparkMLlibModel(SparkModel):
         """
         rdd = lp_to_simple_rdd(labeled_points, categorical, nb_classes)
         rdd = rdd.repartition(self.num_workers)
-        self._train(rdd, nb_epoch, batch_size, verbose, validation_split)
+        self._fit(rdd, nb_epoch, batch_size, verbose, validation_split)
 
     def predict(self, mllib_data):
         """Predict probabilities for an RDD of features

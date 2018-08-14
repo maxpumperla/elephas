@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
+import abc
 import numpy as np
 import socket
 import six.moves.cPickle as pickle
@@ -13,12 +14,16 @@ from ..utils.sockets import determine_master, send, receive
 
 
 class BaseParameterClient(object):
+    __metaclass__ = abc.ABCMeta
+
     def __init__(self):
         raise NotImplementedError
 
+    @abc.abstractmethod
     def update_parameters(self, delta):
         raise NotImplementedError
 
+    @abc.abstractmethod
     def get_parameters(self):
         raise NotImplementedError
 
