@@ -191,13 +191,13 @@ class SparkMLlibModel(SparkModel):
                             master_metrics=master_metrics, custom_objects=custom_objects,
                             parameter_server_mode=parameter_server_mode, *args, **kwargs)
 
-    def train(self, labeled_points, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1,
+    def fit(self, labeled_points, epochs=10, batch_size=32, verbose=0, validation_split=0.1,
               categorical=False, nb_classes=None):
         """Train an elephas model on an RDD of LabeledPoints
         """
         rdd = lp_to_simple_rdd(labeled_points, categorical, nb_classes)
         rdd = rdd.repartition(self.num_workers)
-        self._fit(rdd, nb_epoch, batch_size, verbose, validation_split)
+        self._fit(rdd=rdd, epochs=epochs, batch_size=batch_size, verbose=verbose, validation_split=validation_split)
 
     def predict(self, mllib_data):
         """Predict probabilities for an RDD of features
