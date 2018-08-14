@@ -44,7 +44,7 @@ class HttpServer(BaseParameterServer):
     """
 
     def __init__(self, model, optimizer, mode, port=4000, debug=True,
-                     threaded=True, use_reloader=False):
+                 threaded=True, use_reloader=False):
         """Initializes and HTTP server from a serialized Keras model, elephas optimizer,
         a parallelisation mode and a port to run the Flask application on. In
         hogwild mode no read- or write-locks will be acquired, in asynchronous
@@ -115,11 +115,12 @@ class HttpServer(BaseParameterServer):
             delta = pickle.loads(request.data)
             if self.mode == 'asynchronous':
                 self.lock.acquire_write()
-            constraints = self.master_network.constraints
-            if len(constraints) == 0:
-                def empty(a):
-                    return a
-                constraints = [empty for x in self.weights]
+
+            if not self.master_network.built:
+                self.master_network.build()
+
+            base_constraint = lambda a: a
+            constraints = [base_constraint for _ in self.weights]
             self.weights = self.optimizer.get_updates(self.weights, constraints, delta)
             if self.mode == 'asynchronous':
                 self.lock.release()

@@ -59,7 +59,7 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
 
         keras_model = model_from_yaml(self.get_keras_model_config())
 
-        spark_model = SparkModel(simple_rdd.ctx, keras_model, optimizer=optimizer,
+        spark_model = SparkModel(keras_model, optimizer=optimizer,
                                  mode=self.get_mode(), frequency=self.get_frequency(),
                                  num_workers=self.get_num_workers())
         spark_model.train(simple_rdd, nb_epoch=self.get_nb_epoch(), batch_size=self.get_batch_size(),
