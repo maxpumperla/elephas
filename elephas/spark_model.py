@@ -149,7 +149,6 @@ class SparkModel(object):
         train_config = self.get_train_config(epochs, batch_size, verbose, validation_split)
         frequency = self.frequency
 
-
         if self.mode in ['asynchronous', 'hogwild']:
             worker = AsynchronousSparkWorker(
                 yaml, self.parameter_server_mode, train_config, self.frequency,

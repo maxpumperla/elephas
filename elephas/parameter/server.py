@@ -12,6 +12,11 @@ from ..utils.rwlock import RWLock as Lock
 
 
 class BaseParameterServer(object):
+    """BaseParameterServer
+
+    Parameter servers can be started and stopped. Server implementations have
+    to cater to the needs of their respective BaseParameterClient instances.
+    """
     __metaclass__ = abc.ABCMeta
 
     def __init__(self):
@@ -31,17 +36,43 @@ class BaseParameterServer(object):
 
 
 class HttpServer(BaseParameterServer):
+    """HttpServer
 
-    def __init__(self, master_network, optimizer, mode, port=4000):
-        self.master_network = master_network
+    Flask HTTP server. Defines two routes, `/parameters` to GET current
+    parameters held by this server, and `/update` which can be used to
+    POST updates.
+    """
+
+    def __init__(self, model, optimizer, mode, port=4000, debug=True,
+                     threaded=True, use_reloader=False):
+        """Initializes and HTTP server from a serialized Keras model, elephas optimizer,
+        a parallelisation mode and a port to run the Flask application on. In
+        hogwild mode no read- or write-locks will be acquired, in asynchronous
+        mode this is the case.
+
+        :param model: Serialized Keras model
+        :param optimizer: Elephas optimizer
+        :param mode: parallelization mode, either `asynchronous` or `hogwild`
+        :param port: int, port to run the application on
+        :param debug: boolean, Flask debug mode
+        :param threaded: boolean, Flask threaded application mode
+        :param use_reloader: boolean, Flask `use_reloader` argument
+        """
+        BaseParameterServer.__init__(self)
+
+        self.master_network = dict_to_model(model)
         self.mode = mode
         self.master_url = None
         self.optimizer = optimizer
+
         self.port = port
+        self.debug = debug
+        self.threaded = threaded
+        self.use_reloader = use_reloader
 
         self.lock = Lock()
         self.pickled_weights = None
-        self.weights = master_network.get_weights()
+        self.weights = self.master_network.get_weights()
 
         self.server = Process(target=self.start_flask_service)
 
@@ -94,13 +125,26 @@ class HttpServer(BaseParameterServer):
                 self.lock.release()
             return 'Update done'
 
-        self.app.run(host='0.0.0.0', debug=True, port=self.port,
-                     threaded=True, use_reloader=False)
+        self.app.run(host='0.0.0.0', debug=self.debug, port=self.port,
+                     threaded=self.threaded, use_reloader=self.use_reloader)
 
 
 class SocketServer(BaseParameterServer):
+    """SocketServer
+
+    A basic Python socket server
+
+    """
 
     def __init__(self, model, port=4000):
+        """Initializes a Socket server instance from a serializer Keras model
+        and a port to listen to.
+
+        :param model: Serialized Keras model
+        :param port: int, port to run the socket on
+        """
+        BaseParameterServer.__init__(self)
+
         self.model = dict_to_model(model)
         self.port = port
         self.socket = None
