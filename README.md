@@ -42,36 +42,11 @@ Elephas implements a class of data-parallel algorithms on top of Keras, using Sp
 ## Getting started
 
 ### Installation
-Install elephas from PyPI with
+Install elephas from PyPI with, Spark will be installed through `pyspark` for you.
 ```
 pip install elephas
 ```
-Depending on what OS you are using, you may need to install some prerequisite modules (LAPACK, BLAS, fortran compiler) first.
 
-For example, on Ubuntu Linux:
-```
-sudo apt-get install liblapack-dev libblas-dev gfortran
-```
-
-A quick way to install Spark locally is to use homebrew on Mac
-```
-brew install spark
-```
-or linuxbrew on linux.
-```
-brew install apache-spark
-```
-The brew version of Spark may be outdated at times. To build from source, simply follow the instructions at the [Spark download section](http://spark.apache.org/downloads.html) or use the following commands.  
-```
-wget http://apache.mirrors.tds.net/spark/spark-1.5.2/spark-1.5.2-bin-hadoop2.6.tgz -P ~
-sudo tar zxvf ~/spark-* -C /usr/local
-sudo mv /usr/local/spark-* /usr/local/spark
-```
-After that, make sure to put these path variables to your shell profile (e.g. `~/.zshrc`):
-```
-export SPARK_HOME=/usr/local/spark
-export PATH=$PATH:$SPARK_HOME/bin
-```
 
 ### Using Docker
 
