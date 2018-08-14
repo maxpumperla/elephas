@@ -1,55 +1,54 @@
-# Extension of the Jupyter Notebooks
-# Distributed under the terms of the Modified BSD / MIT License.
-FROM jupyter/scipy-notebook
+FROM gw000/keras:2.1.3-py3-tf-gpu
+MAINTAINER gw0 [http://gw.tnode.com/] <gw.2017@ena.one>
 
-MAINTAINER Elephas Project
+# install py3-tf-cpu/gpu (Python 3, TensorFlow, CPU/GPU)
+RUN apt-get update -qq \
+ && apt-get install --no-install-recommends -y \
+    # install python 3
+    python3 \
+    python3-dev \
+    python3-pip \
+    python3-setuptools \
+    python3-virtualenv \
+    pkg-config \
+    # requirements for numpy
+    libopenblas-base \
+    python3-numpy \
+    python3-scipy \
+    # requirements for keras
+    python3-h5py \
+    python3-yaml \
+    python3-pydot \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
-USER root
+ARG TENSORFLOW_VERSION=1.10.0
+ARG TENSORFLOW_DEVICE=gpu
+ARG TENSORFLOW_APPEND=_gpu
+RUN pip3 --no-cache-dir install https://storage.googleapis.com/tensorflow/linux/${TENSORFLOW_DEVICE}/tensorflow${TENSORFLOW_APPEND}-${TENSORFLOW_VERSION}-cp35-cp35m-linux_x86_64.whl
 
-# Spark dependencies
-ENV APACHE_SPARK_VERSION 2.0.1
-ENV PYJ_VERSION py4j-0.10.1-src.zip
-RUN apt-get -y update && \
-    apt-get install -y --no-install-recommends openjdk-7-jre-headless && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-RUN cd /tmp && \
-        wget -q http://d3kbcqa49mib13.cloudfront.net/spark-${APACHE_SPARK_VERSION}-bin-hadoop2.6.tgz && \
-        tar xzf spark-${APACHE_SPARK_VERSION}-bin-hadoop2.6.tgz -C /usr/local && \
-        rm spark-${APACHE_SPARK_VERSION}-bin-hadoop2.6.tgz
-RUN cd /usr/local && ln -s spark-${APACHE_SPARK_VERSION}-bin-hadoop2.6 spark
+ARG KERAS_VERSION=2.1.3
+ENV KERAS_BACKEND=tensorflow
+RUN pip3 --no-cache-dir install git+https://github.com/fchollet/keras.git@${KERAS_VERSION}
 
-# Mesos dependencies
-# Currently, Mesos is not available from Debian Jessie.
-# So, we are installing it from Debian Wheezy. Once it
-# becomes available for Debian Jessie. We should switch
-# over to using that instead.
-RUN apt-key adv --keyserver keyserver.ubuntu.com --recv E56151BF && \
-    DISTRO=debian && \
-    CODENAME=wheezy && \
-    echo "deb http://repos.mesosphere.io/${DISTRO} ${CODENAME} main" > /etc/apt/sources.list.d/mesosphere.list && \
-    apt-get -y update && \
-    apt-get --no-install-recommends -y --force-yes install mesos=0.22.1-1.0.debian78 && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# install additional debian packages
+RUN apt-get update -qq \
+ && apt-get install --no-install-recommends -y \
+    # system tools
+    less \
+    procps \
+    vim-tiny \
+    # build dependencies
+    build-essential \
+    libffi-dev \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
-# additional libraries for Keras and Elephas
-# RUN apt-get --no-install-recommends -y --force-yes install liblapack-dev libblas-dev gfortran
 
-# Spark and Mesos config
-ENV SPARK_HOME /usr/local/spark
-ENV PYTHONPATH $SPARK_HOME/python:$SPARK_HOME/python/lib/$PYJ_LIB_VERSION
-ENV MESOS_NATIVE_LIBRARY /usr/local/lib/libmesos.so
-ENV SPARK_OPTS --driver-java-options=-Xms1024M --driver-java-options=-Xmx4096M --driver-java-options=-Dlog4j.logLevel=info
+RUN mkdir -p app
+WORKDIR /app
+COPY ./requirements.txt /app
 
-USER $NB_USER
-
-# Install Python 3 Tensorflow
-RUN conda install --quiet --yes 'tensorflow=0.9.0'
-# Keras
-RUN conda install --channel https://conda.anaconda.org/KEHANG --quiet --yes 'keras=1.0.8'
-# Use the latest version of hyperopts (python 3.5 compatibility)
-RUN pip install https://github.com/hyperopt/hyperopt/archive/master.zip
-# Elephas for distributed spark
-RUN pip install elephas
-RUN pip install py4j
+# Install requirements
+RUN pip3 install -r ./requirements.txt
+RUN pip3 install git+https://github.com/hyperopt/hyperopt.git
