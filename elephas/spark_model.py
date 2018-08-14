@@ -61,11 +61,12 @@ class SparkModel(object):
         self.custom_objects = custom_objects
         self.parameter_server_mode = parameter_server_mode
 
+        self.serialized_model = model_to_dict(self.master_network)
         if self.parameter_server_mode == 'http':
-            self.parameter_server = HttpServer(self.master_network, self.optimizer, self.mode)
+            self.parameter_server = HttpServer(self.serialized_model, self.optimizer, self.mode)
             self.client = HttpClient()
         elif self.parameter_server_mode == 'socket':
-            self.parameter_server = SocketServer(model_to_dict(self.master_network))
+            self.parameter_server = SocketServer(self.serialized_model)
             self.client = SocketClient()
         else:
             raise ValueError("Parameter server mode has to be either `http` or `socket`, "
@@ -145,23 +146,16 @@ class SparkModel(object):
                                     metrics=self.master_metrics)
         if self.mode in ['asynchronous', 'hogwild']:
             self.start_server()
-        yaml = self.master_network.to_yaml()
         train_config = self.get_train_config(epochs, batch_size, verbose, validation_split)
-        frequency = self.frequency
 
         if self.mode in ['asynchronous', 'hogwild']:
-            worker = AsynchronousSparkWorker(
-                yaml, self.parameter_server_mode, train_config, self.frequency,
-                self.master_optimizer, self.master_loss, self.master_metrics, self.custom_objects
-            )
+            worker = AsynchronousSparkWorker(self.parameter_server_mode, train_config, self.frequency,
+                self.master_optimizer, self.master_loss, self.master_metrics, self.custom_objects)
             rdd.mapPartitions(worker.train).collect()
             new_parameters = self.client.get_parameters()
         elif self.mode == 'synchronous':
-            parameters = self.master_network.get_weights()
-            worker = SparkWorker(
-                yaml, parameters, train_config,
-                self.master_optimizer, self.master_loss, self.master_metrics, self.custom_objects
-            )
+            worker = SparkWorker(self.serialized_model, train_config, self.master_optimizer, self.master_loss,
+                                 self.master_metrics, self.custom_objects)
             deltas = rdd.mapPartitions(worker.train).collect()
             new_parameters = self.master_network.get_weights()
             for delta in deltas:
@@ -195,7 +189,6 @@ class SparkMLlibModel(SparkModel):
         :param custom_objects: Keras custom objects
         :param parameter_server_mode: String, either `http` or `socket
         """
-
         SparkModel.__init__(self, master_network=master_network, optimizer=optimizer, mode=mode, frequency=frequency,
                             num_workers=num_workers, master_optimizer=master_optimizer, master_loss=master_loss,
                             master_metrics=master_metrics, custom_objects=custom_objects,
