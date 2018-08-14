@@ -16,7 +16,7 @@ from pyspark import SparkContext, SparkConf
 # Define basic parameters
 batch_size = 64
 nb_classes = 10
-nb_epoch = 10
+epochs = 10
 
 # Create Spark context
 conf = SparkConf().setAppName('Mnist_Spark_MLP').setMaster('local[8]')
@@ -62,7 +62,7 @@ spark_model = SparkModel(model,
                          num_workers=2,master_optimizer=sgd)
 
 # Train Spark model
-spark_model.train(rdd, nb_epoch=nb_epoch, batch_size=batch_size, verbose=2, validation_split=0.1)
+spark_model.fit(rdd, epochs=epochs, batch_size=batch_size, verbose=2, validation_split=0.1)
 
 # Evaluate Spark model by evaluating the underlying model
 score = spark_model.master_network.evaluate(x_test, y_test, verbose=2)

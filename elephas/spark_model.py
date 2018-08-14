@@ -141,7 +141,6 @@ class SparkModel(object):
         if self.mode in ['asynchronous', 'hogwild']:
             self.start_server()
         train_config = self.get_train_config(epochs, batch_size, verbose, validation_split)
-        model = self.serialized_model
         mode = self.parameter_server_mode
         freq = self.frequency
         optimizer = self.master_optimizer
@@ -149,19 +148,22 @@ class SparkModel(object):
         metrics = self.master_metrics
         custom = self.custom_objects
 
+        yaml = self.master_network.to_yaml()
+        init = self.master_network.get_weights()
+        parameters = rdd.context.broadcast(init)
+
         if self.mode in ['asynchronous', 'hogwild']:
-            worker = AsynchronousSparkWorker(model, mode, train_config, freq, optimizer, loss,metrics, custom)
+            worker = AsynchronousSparkWorker(yaml, parameters, mode, train_config, freq, optimizer, loss, metrics, custom)
             rdd.mapPartitions(worker.train).collect()
             new_parameters = self.client.get_parameters()
         elif self.mode == 'synchronous':
-            yaml = self.master_network.to_yaml()
-            init = self.master_network.get_weights()
-            parameters = rdd.context.broadcast(init)
+
             worker = SparkWorker(yaml, parameters, train_config, optimizer, loss, metrics, custom)
             deltas = rdd.mapPartitions(worker.train).collect()
             new_parameters = self.master_network.get_weights()
             for delta in deltas:
-                constraints = self.master_network.constraints
+                base_constraint = lambda a: a
+                constraints = [base_constraint for _ in self.weights]
                 new_parameters = self.optimizer.get_updates(self.weights, constraints, delta)
         else:
             raise ValueError("Unsupported mode {}".format(self.mode))

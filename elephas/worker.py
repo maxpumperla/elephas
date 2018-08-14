@@ -3,7 +3,6 @@ from itertools import tee
 from keras.utils.generic_utils import slice_arrays
 from keras.models import model_from_yaml
 
-from .utils.serialization import dict_to_model
 from .utils import subtract_params
 from .parameter import SocketClient, HttpClient
 
@@ -13,21 +12,21 @@ class SparkWorker(object):
     """
     def __init__(self, yaml, parameters, train_config, master_optimizer,
                  master_loss, master_metrics, custom_objects):
-        # TODO handle custom_objects
         self.yaml = yaml
         self.parameters = parameters
         self.train_config = train_config
-        self.master_optimizer = master_optimizer
+        self.master_optimizer = "sgd"  # TODO
         self.master_loss = master_loss
         self.master_metrics = master_metrics
         self.custom_objects = custom_objects
+        self.model = None
 
     def train(self, data_iterator):
         """Train a keras model on a worker
         """
-        model = model_from_yaml(self.yaml, self.custom_objects)
-        model.compile(optimizer=self.master_optimizer, loss=self.master_loss, metrics=self.master_metrics)
-        model.set_weights(self.parameters.value)
+        self.model = model_from_yaml(self.yaml, self.custom_objects)
+        self.model.compile(optimizer=self.master_optimizer, loss=self.master_loss, metrics=self.master_metrics)
+        self.model.set_weights(self.parameters.value)
 
         feature_iterator, label_iterator = tee(data_iterator, 2)
         x_train = np.asarray([x for x, y in feature_iterator])
@@ -45,10 +44,9 @@ class SparkWorker(object):
 class AsynchronousSparkWorker(object):
     """Asynchronous Spark worker. This code will be executed on workers.
     """
-    def __init__(self, serialized_model, parameter_server_mode, train_config, frequency,
+    def __init__(self, yaml, parameters, parameter_server_mode, train_config, frequency,
                  master_optimizer, master_loss, master_metrics, custom_objects):
-        # TODO handle custom_objects
-        self.model = dict_to_model(serialized_model)
+
         if parameter_server_mode == 'http':
             self.client = HttpClient()
         elif parameter_server_mode == 'socket':
@@ -63,6 +61,11 @@ class AsynchronousSparkWorker(object):
         self.master_optimizer = master_optimizer
         self.master_loss = master_loss
         self.master_metrics = master_metrics
+        self.yaml = yaml
+        self.parameters = parameters
+        self.custom_objects = custom_objects
+        self.model = None
+
 
     def train(self, data_iterator):
         """Train a keras model on a worker and send asynchronous updates
@@ -75,7 +78,9 @@ class AsynchronousSparkWorker(object):
         if x_train.size == 0:
             return
 
+        self.model = model_from_yaml(self.yaml, self.custom_objects)
         self.model.compile(optimizer=self.master_optimizer, loss=self.master_loss, metrics=self.master_metrics)
+        self.model.set_weights(self.parameters.value)
 
         nb_epoch = self.train_config['nb_epoch']
         batch_size = self.train_config.get('batch_size')
