@@ -67,25 +67,18 @@ class SparkModel(object):
                              "got {}".format(self.parameter_server_mode))
 
     @staticmethod
-    def get_train_config(nb_epoch, batch_size,
-                         verbose, validation_split):
-        """Get configuration of training parameters
-        """
-        train_config = {'nb_epoch': nb_epoch,
-                        'batch_size': batch_size,
-                        'verbose': verbose,
-                        'validation_split': validation_split}
-        return train_config
+    def get_train_config(nb_epoch, batch_size, verbose, validation_split):
+        return {'nb_epoch': nb_epoch,
+                'batch_size': batch_size,
+                'verbose': verbose,
+                'validation_split': validation_split}
 
     def get_config(self):
-        """Get configuration of model parameters
-        """
-        model_config = {'model': self.master_network.get_config(),
-                        'optimizer': self.optimizer.get_config(),
-                        'mode': self.mode,
-                        'frequency': self.frequency,
-                        'num_workers': self.num_workers}
-        return model_config
+        return {'model': self.master_network.get_config(),
+                'optimizer': self.optimizer.get_config(),
+                'mode': self.mode,
+                'frequency': self.frequency,
+                'num_workers': self.num_workers}
 
     @property
     def master_network(self):
