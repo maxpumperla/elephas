@@ -9,7 +9,7 @@ def determine_master(port=':4000'):
     :param port: port on which the application runs
     :return: Master address
     """
-    return gethostbyname(gethostname()) + port
+    return str(gethostbyname(gethostname())) + str(port)
 
 
 def _receive_all(socket, num_bytes):

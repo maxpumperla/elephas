@@ -55,8 +55,7 @@ rdd = to_simple_rdd(sc, x_train, y_train)
 
 # Initialize SparkModel from Keras model and Spark context
 adagrad = elephas_optimizers.Adagrad()
-spark_model = SparkModel(sc,
-                         model,
+spark_model = SparkModel(model,
                          optimizer=adagrad,
                          frequency='epoch',
                          mode='asynchronous',

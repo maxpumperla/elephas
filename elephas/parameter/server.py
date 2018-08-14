@@ -58,7 +58,6 @@ class HttpServer(BaseParameterServer):
         :param threaded: boolean, Flask threaded application mode
         :param use_reloader: boolean, Flask `use_reloader` argument
         """
-        BaseParameterServer.__init__(self)
 
         self.master_network = dict_to_model(model)
         self.mode = mode
@@ -144,7 +143,6 @@ class SocketServer(BaseParameterServer):
         :param model: Serialized Keras model
         :param port: int, port to run the socket on
         """
-        BaseParameterServer.__init__(self)
 
         self.model = dict_to_model(model)
         self.port = port

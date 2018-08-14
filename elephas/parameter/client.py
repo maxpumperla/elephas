@@ -45,7 +45,6 @@ class HttpClient(BaseParameterClient):
     get parameters and `/update` to update the server's parameters.
     """
     def __init__(self, port=4000):
-        BaseParameterClient.__init__(self)
 
         self.master_url = determine_master(port=port)
         self.headers = {'Content-Type': 'application/elephas'}
@@ -70,7 +69,6 @@ class SocketClient(BaseParameterClient):
     indicate a get-request, those with a `u` indicate a parameter update.
     """
     def __init__(self, host='0.0.0.0', port=4000):
-        BaseParameterClient.__init__(self)
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect((host, port))
