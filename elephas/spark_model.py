@@ -14,15 +14,9 @@ from .parameter import HttpClient, SocketClient
 
 class SparkModel(object):
 
-    def __init__(self, master_network, optimizer=None,
-                 mode='asynchronous', frequency='epoch',
-                 num_workers=None,
-                 master_optimizer="sgd",
-                 master_loss="categorical_crossentropy",
-                 master_metrics=None,
-                 custom_objects=None,
-                 parameter_server_mode='http',
-                 *args, **kwargs):
+    def __init__(self, master_network, optimizer=None, mode='asynchronous', frequency='epoch',
+                 num_workers=None, master_optimizer="sgd", master_loss="categorical_crossentropy",
+                 master_metrics=None, custom_objects=None, parameter_server_mode='http', *args, **kwargs):
         """SparkModel
 
         Base class for distributed training on RDDs. Spark model takes a Keras
@@ -149,8 +143,9 @@ class SparkModel(object):
         train_config = self.get_train_config(epochs, batch_size, verbose, validation_split)
 
         if self.mode in ['asynchronous', 'hogwild']:
-            worker = AsynchronousSparkWorker(self.parameter_server_mode, train_config, self.frequency,
-                self.master_optimizer, self.master_loss, self.master_metrics, self.custom_objects)
+            worker = AsynchronousSparkWorker(self.serialized_model, self.parameter_server_mode, train_config,
+                                             self.frequency, self.master_optimizer, self.master_loss,
+                                             self.master_metrics, self.custom_objects)
             rdd.mapPartitions(worker.train).collect()
             new_parameters = self.client.get_parameters()
         elif self.mode == 'synchronous':
