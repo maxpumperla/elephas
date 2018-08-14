@@ -61,7 +61,6 @@ class SparkModel(object):
         self.custom_objects = custom_objects
         self.parameter_server_mode = parameter_server_mode
 
-        # TODO: clients have to be initialized on workers, too.
         if self.parameter_server_mode == 'http':
             self.parameter_server = HttpServer(self.master_network, self.optimizer, self.mode)
             self.client = HttpClient()
@@ -128,7 +127,7 @@ class SparkModel(object):
         if self.mode in ['asynchronous', 'synchronous', 'hogwild']:
             self._train(rdd, nb_epoch, batch_size, verbose, validation_split)
         else:
-            raise Exception("Choose from one of the modes: asynchronous, synchronous or hogwild")
+            raise ValueError("Choose from one of the modes: asynchronous, synchronous or hogwild")
 
     def _train(self, rdd, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1):
         """Protected train method to make wrapping of modes easier
@@ -142,7 +141,7 @@ class SparkModel(object):
         train_config = self.get_train_config(nb_epoch, batch_size, verbose, validation_split)
         if self.mode in ['asynchronous', 'hogwild']:
             worker = AsynchronousSparkWorker(
-                yaml, self.client, train_config, self.frequency,
+                yaml, self.parameter_server_mode, train_config, self.frequency,
                 self.master_optimizer, self.master_loss, self.master_metrics, self.custom_objects
             )
             rdd.mapPartitions(worker.train).collect()
