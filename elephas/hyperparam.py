@@ -23,7 +23,6 @@ class HyperParamModel(object):
     def compute_trials(self, model, data, max_evals):
         model_string = get_hyperopt_model_string(model=model, data=data, functions=None, notebook_name=None,
                                                  verbose=False, stack=3)
-        print(model_string)
         hyperas_worker = HyperasWorker(model_string, max_evals)
         dummy_rdd = self.spark_context.parallelize([i for i in range(1, 1000)])
         dummy_rdd = dummy_rdd.repartition(self.num_workers)

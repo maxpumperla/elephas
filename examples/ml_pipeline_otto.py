@@ -1,6 +1,6 @@
 from __future__ import print_function
-
 from __future__ import absolute_import
+
 from pyspark.mllib.linalg import Vectors
 import numpy as np
 import random
@@ -23,24 +23,27 @@ conf = SparkConf().setAppName('Otto_Spark_ML_Pipeline').setMaster('local[8]')
 sc = SparkContext(conf=conf)
 sql_context = SQLContext(sc)
 
+
 # Data loader
 def shuffle_csv(csv_file):
     lines = open(csv_file).readlines()
     random.shuffle(lines)
     open(csv_file, 'w').writelines(lines)
 
+
 def load_data_rdd(csv_file, shuffle=True, train=True):
     if shuffle:
         shuffle_csv(csv_file)
     data = sc.textFile(data_path + csv_file)
-    data = data.filter(lambda x:x.split(',')[0] != 'id').map(lambda line: line.split(','))
+    data = data.filter(lambda x: x.split(',')[0] != 'id').map(lambda line: line.split(','))
     if train:
         data = data.map(
             lambda line: (Vectors.dense(np.asarray(line[1:-1]).astype(np.float32)),
-            str(line[-1]).replace('Class_', '')) )
+                          str(line[-1]).replace('Class_', '')))
     else:
-        data = data.map(lambda line: (Vectors.dense(np.asarray(line[1:]).astype(np.float32)), "1") )
+        data = data.map(lambda line: (Vectors.dense(np.asarray(line[1:]).astype(np.float32)), "1"))
     return data
+
 
 # Define Data frames
 train_df = sql_context.createDataFrame(load_data_rdd("train.csv"), ['features', 'category'])
@@ -91,7 +94,6 @@ pipeline = Pipeline(stages=[string_indexer, scaler, estimator])
 fitted_pipeline = pipeline.fit(train_df)
 
 # Evaluate Spark model
-
 prediction = fitted_pipeline.transform(train_df)
 pnl = prediction.select("index_category", "prediction")
 pnl.show(100)

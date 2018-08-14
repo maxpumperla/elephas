@@ -55,11 +55,8 @@ rdd = to_simple_rdd(sc, x_train, y_train)
 
 # Initialize SparkModel from Keras model and Spark context
 adagrad = elephas_optimizers.Adagrad()
-spark_model = SparkModel(model,
-                         optimizer=adagrad,
-                         frequency='epoch',
-                         mode='asynchronous',
-                         num_workers=2,master_optimizer=sgd)
+spark_model = SparkModel(model, optimizer=adagrad, frequency='epoch',
+                         mode='asynchronous', num_workers=2, master_optimizer=sgd)
 
 # Train Spark model
 spark_model.fit(rdd, epochs=epochs, batch_size=batch_size, verbose=2, validation_split=0.1)
