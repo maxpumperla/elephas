@@ -3,7 +3,7 @@ dist: trusty
 language: python
 python:
   - "2.7"
-  # - "3.4" # Note that hyperopt currently seems to have issues with 3.4
+  - "3.4" # Note that hyperopt currently seems to have issues with 3.4
 install:
   # code below is taken from http://conda.pydata.org/docs/travis.html
   # We do this conditionally because it saves us some downloading if the
@@ -21,20 +21,11 @@ install:
   - conda info -a
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib pandas pytest h5py flask
   - source activate test-environment
-  - pip install pytest-cov python-coveralls
-  - pip install git+git://github.com/Theano/Theano.git
-  - pip install keras
-  - python setup.py install
+  - pip install pytest pytest-cov python-coveralls
+  - pip install -r requirements.txt
 
-  # Install Spark
-  - wget http://apache.mirrors.tds.net/spark/spark-1.5.2/spark-1.5.2-bin-hadoop2.6.tgz -P $HOME
-  - tar zxvf $HOME/spark-* -C $HOME
-  - export SPARK_HOME=$HOME/spark-1.5.2-bin-hadoop2.6
-  - export PATH=$PATH:$SPARK_HOME/bin
-
-# Just run an example for now
 script:
   - python -c "import keras.backend"
-  - spark-submit --driver-memory 2G $PWD/examples/mnist_mlp_spark.py
+  - py.test tests/
 after_success:
   - coveralls
