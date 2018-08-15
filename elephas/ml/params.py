@@ -207,6 +207,8 @@ class HasMetrics(Params):
     def __init__(self):
         super(HasMetrics, self).__init__()
         self.metrics = Param(self, "metrics", "Keras metrics")
+        self._setDefault(metrics=['acc'])
+
 
     def set_metrics(self, metrics):
         self._paramMap[self.metrics] = metrics

@@ -49,7 +49,7 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
                 'labelCol': self.getLabelCol(),
                 'epochs': self.get_epochs(),
                 'batch_size': self.get_batch_size(),
-                'verbosity': self.get_verbosity(),
+                'verbose': self.get_verbosity(),
                 'nb_classes': self.get_nb_classes(),
                 'outputCol': self.getOutputCol()}
 
@@ -115,7 +115,8 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol):
     @keyword_only
     def __init__(self, **kwargs):
         super(ElephasTransformer, self).__init__()
-        self.weights = kwargs.pop('weights')  # Strip model weights from parameters to init Transformer
+        if "weights" in kwargs.keys():
+            self.weights = kwargs.pop('weights')  # Strip model weights from parameters to init Transformer
         self.set_params(**kwargs)
 
     @keyword_only
