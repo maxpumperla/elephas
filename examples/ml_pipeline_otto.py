@@ -1,7 +1,7 @@
 from __future__ import print_function
 from __future__ import absolute_import
 
-from pyspark.mllib.linalg import Vectors
+from pyspark.ml.linalg import Vectors
 import numpy as np
 import random
 
@@ -17,7 +17,7 @@ from keras.layers import Dense, Dropout, Activation
 from elephas.ml_model import ElephasEstimator
 from elephas import optimizers as elephas_optimizers
 
-data_path = "./"
+data_path = "../"
 
 # Spark contexts
 conf = SparkConf().setAppName('Otto_Spark_ML_Pipeline').setMaster('local[8]')
@@ -34,7 +34,7 @@ def shuffle_csv(csv_file):
 
 def load_data_rdd(csv_file, shuffle=True, train=True):
     if shuffle:
-        shuffle_csv(csv_file)
+        shuffle_csv(data_path + csv_file)
     data = sc.textFile(data_path + csv_file)
     data = data.filter(lambda x: x.split(',')[0] != 'id').map(lambda line: line.split(','))
     if train:
