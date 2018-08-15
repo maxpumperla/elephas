@@ -5,12 +5,10 @@ import pytest
 from keras.datasets import mnist
 from keras.models import Sequential
 from keras.layers.core import Dense, Dropout, Activation
-from keras.optimizers import SGD
 from keras.utils import np_utils
 
-from elephas.spark_model import SparkModel
+from elephas.spark_model import SparkModel, load_spark_model
 from elephas.utils.rdd_utils import to_simple_rdd
-from elephas import optimizers as elephas_optimizers
 
 
 # Define basic parameters
@@ -49,6 +47,12 @@ model.add(Dense(10))
 model.add(Activation('softmax'))
 
 model.compile(optimizer="sgd", loss="categorical_crossentropy", metrics=["acc"])
+
+
+def test_serialization():
+    spark_model = SparkModel(model, frequency='epoch', mode='synchronous', num_workers=2)
+    spark_model.save("test.h5")
+    recov = load_spark_model("test.h5")
 
 
 def test_spark_model_end_to_end(spark_context):

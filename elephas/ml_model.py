@@ -1,6 +1,8 @@
 from __future__ import absolute_import, print_function
 
 import numpy as np
+import h5py
+import json
 
 from pyspark.ml.param.shared import HasOutputCol, HasFeaturesCol, HasLabelCol
 from pyspark import keyword_only
@@ -32,6 +34,35 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
     def __init__(self, **kwargs):
         super(ElephasEstimator, self).__init__()
         self.set_params(**kwargs)
+
+    def get_config(self):
+        return {'keras_model_config': self.get_keras_model_config(),
+                'elephas_optimizer_config': self.get_elephas_optimizer_config(),
+                'mode': self.get_mode(),
+                'frequency': self.get_frequency(),
+                'num_workers': self.get_num_workers(),
+                'categorical': self.get_categorical_labels(),
+                'loss': self.get_loss(),
+                'metrics': self.get_metrics(),
+                'validation_split': self.get_validation_split(),
+                'featuresCol': self.getFeaturesCol(),
+                'labelCol': self.getLabelCol(),
+                'epochs': self.get_epochs(),
+                'batch_size': self.get_batch_size(),
+                'verbose': self.get_verbosity(),
+                'nb_classes': self.get_nb_classes(),
+                'outputCol': self.getOutputCol()}
+
+    def save(self, file_name):
+        f = h5py.File(file_name, mode='w')
+
+        f.attrs['distributed_config'] = json.dumps({
+            'class_name': self.__class__.__name__,
+            'config': self.get_config()
+        }).encode('utf8')
+
+        f.flush()
+        f.close()
 
     @keyword_only
     def set_params(self, **kwargs):
@@ -70,6 +101,13 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
                                   weights=weights)
 
 
+def load_ml_estimator(file_name):
+    f = h5py.File(file_name, mode='r')
+    elephas_conf = json.loads(f.attrs.get('distributed_config'))
+    config = elephas_conf.get('config')
+    return ElephasEstimator(**config)
+
+
 class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol):
     """SparkML Transformer implementation. Contains a trained model,
     with which new feature data can be transformed into labels.
@@ -77,7 +115,8 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol):
     @keyword_only
     def __init__(self, **kwargs):
         super(ElephasTransformer, self).__init__()
-        self.weights = kwargs.pop('weights')  # Strip model weights from parameters to init Transformer
+        if "weights" in kwargs.keys():
+            self.weights = kwargs.pop('weights')  # Strip model weights from parameters to init Transformer
         self.set_params(**kwargs)
 
     @keyword_only
@@ -85,6 +124,23 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol):
         """Set all provided parameters, otherwise set defaults
         """
         return self._set(**kwargs)
+
+    def get_config(self):
+        return {'keras_model_config': self.get_keras_model_config(),
+                'labelCol': self.getLabelCol(),
+                'outputCol': self.getOutputCol()}
+
+    def save(self, file_name):
+        f = h5py.File(file_name, mode='w')
+
+        f.attrs['distributed_config'] = json.dumps({
+            'class_name': self.__class__.__name__,
+            'config': self.get_config()
+        }).encode('utf8')
+
+        f.flush()
+        f.close()
+
 
     def get_model(self):
         return model_from_yaml(self.get_keras_model_config())
@@ -114,3 +170,10 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol):
         results_df = results_df.withColumn(label_col, results_df[label_col].cast(DoubleType()))
 
         return results_df
+
+
+def load_ml_transformer(file_name):
+    f = h5py.File(file_name, mode='r')
+    elephas_conf = json.loads(f.attrs.get('distributed_config'))
+    config = elephas_conf.get('config')
+    return ElephasTransformer(**config)

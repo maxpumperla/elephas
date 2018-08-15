@@ -7,7 +7,7 @@ from keras.layers.core import Dense, Dropout, Activation
 from keras.utils import np_utils
 from keras import optimizers
 
-from elephas.ml_model import ElephasEstimator
+from elephas.ml_model import ElephasEstimator, load_ml_estimator, ElephasTransformer, load_ml_transformer
 from elephas.ml.adapter import to_data_frame
 
 from pyspark.mllib.evaluation import MulticlassMetrics
@@ -46,6 +46,23 @@ model.add(Activation('relu'))
 model.add(Dropout(0.2))
 model.add(Dense(10))
 model.add(Activation('softmax'))
+
+
+def test_serialization_transformer():
+    transformer = ElephasTransformer()
+    transformer.set_keras_model_config(model.to_yaml())
+    transformer.save("test.h5")
+    recov = load_ml_transformer("test.h5")
+
+
+def test_serialization_estimator():
+    estimator = ElephasEstimator()
+    estimator.set_keras_model_config(model.to_yaml())
+    estimator.set_loss("categorical_crossentropy")
+
+
+    estimator.save("test.h5")
+    recov = load_ml_estimator("test.h5")
 
 
 def test_spark_ml_model(spark_context):
