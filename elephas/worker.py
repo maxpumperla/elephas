@@ -83,7 +83,7 @@ class AsynchronousSparkWorker(object):
         self.model.compile(optimizer=optimizer, loss=self.master_loss, metrics=self.master_metrics)
         self.model.set_weights(self.parameters.value)
 
-        nb_epoch = self.train_config['nb_epoch']
+        epochs = self.train_config['epochs']
         batch_size = self.train_config.get('batch_size')
         nb_train_sample = x_train.shape[0]
         nb_batch = int(np.ceil(nb_train_sample / float(batch_size)))
@@ -94,20 +94,18 @@ class AsynchronousSparkWorker(object):
         ]
 
         if self.frequency == 'epoch':
-            for epoch in range(nb_epoch):
+            for epoch in range(epochs):
                 weights_before_training = self.client.get_parameters()
                 self.model.set_weights(weights_before_training)
                 self.train_config['epochs'] = 1
-                self.train_config['nb_epoch'] = 1  # legacy support
                 if x_train.shape[0] > batch_size:
                     self.model.fit(x_train, y_train, **self.train_config)
-                self.train_config['epochs'] = nb_epoch
-                self.train_config['nb_epoch'] = nb_epoch
+                self.train_config['epochs'] = epochs
                 weights_after_training = self.model.get_weights()
                 deltas = subtract_params(weights_before_training, weights_after_training)
                 self.client.update_parameters(deltas)
         elif self.frequency == 'batch':
-            for epoch in range(nb_epoch):
+            for epoch in range(epochs):
                 if x_train.shape[0] > batch_size:
                     for (batch_start, batch_end) in batches:
                         weights_before_training = self.client.get_parameters()

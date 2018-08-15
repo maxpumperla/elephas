@@ -10,7 +10,6 @@ from keras import optimizers
 from elephas.ml_model import ElephasEstimator
 from elephas.ml.adapter import to_data_frame
 
-from pyspark import SparkContext, SparkConf
 from pyspark.mllib.evaluation import MulticlassMetrics
 from pyspark.ml import Pipeline
 
@@ -20,7 +19,7 @@ pytest.mark.usefixtures("spark_context")
 # Define basic parameters
 batch_size = 64
 nb_classes = 10
-nb_epoch = 1
+epochs = 1
 
 # Load data
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
@@ -64,7 +63,7 @@ def test_spark_ml_model(spark_context):
     estimator.set_mode("synchronous")
     estimator.set_loss("categorical_crossentropy")
     estimator.set_metrics(['acc'])
-    estimator.set_nb_epoch(nb_epoch)
+    estimator.set_epochs(epochs)
     estimator.set_batch_size(batch_size)
     estimator.set_validation_split(0.1)
     estimator.set_categorical_labels(True)

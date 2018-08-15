@@ -18,7 +18,7 @@ from pyspark.ml import Pipeline
 # Define basic parameters
 batch_size = 64
 nb_classes = 10
-nb_epoch = 1
+epochs = 1
 
 # Load data
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
@@ -64,7 +64,7 @@ estimator.set_optimizer_config(sgd_conf)
 estimator.set_mode("synchronous")
 estimator.set_loss("categorical_crossentropy")
 estimator.set_metrics(['acc'])
-estimator.set_nb_epoch(nb_epoch)
+estimator.set_epochs(epochs)
 estimator.set_batch_size(batch_size)
 estimator.set_validation_split(0.1)
 estimator.set_categorical_labels(True)

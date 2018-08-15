@@ -70,8 +70,8 @@ class SparkModel(object):
                              "got {}".format(self.parameter_server_mode))
 
     @staticmethod
-    def get_train_config(nb_epoch, batch_size, verbose, validation_split):
-        return {'nb_epoch': nb_epoch,
+    def get_train_config(epochs, batch_size, verbose, validation_split):
+        return {'epochs': epochs,
                 'batch_size': batch_size,
                 'verbose': verbose,
                 'validation_split': validation_split}

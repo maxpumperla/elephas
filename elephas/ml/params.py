@@ -110,15 +110,15 @@ class HasEpochs(Params):
     """
     def __init__(self):
         super(HasEpochs, self).__init__()
-        self.nb_epoch = Param(self, "nb_epoch", "Number of epochs to train")
-        self._setDefault(nb_epoch=10)
+        self.epochs = Param(self, "epochs", "Number of epochs to train")
+        self._setDefault(epochs=10)
 
-    def set_nb_epoch(self, nb_epoch):
-        self._paramMap[self.nb_epoch] = nb_epoch
+    def set_epochs(self, epochs):
+        self._paramMap[self.epochs] = epochs
         return self
 
-    def get_nb_epoch(self):
-        return self.getOrDefault(self.nb_epoch)
+    def get_epochs(self):
+        return self.getOrDefault(self.epochs)
 
 
 class HasBatchSize(Params):

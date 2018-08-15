@@ -56,10 +56,10 @@ def test_has_categorical_labels():
 
 def test_has_epochs():
     param = HasEpochs()
-    assert param.get_nb_epoch() == 10
+    assert param.get_epochs() == 10
     epochs = 42
-    param.set_nb_epoch(epochs)
-    assert param.get_nb_epoch() == epochs
+    param.set_epochs(epochs)
+    assert param.get_epochs() == epochs
 
 
 def test_has_batch_size():
