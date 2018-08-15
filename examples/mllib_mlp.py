@@ -45,6 +45,7 @@ model.add(Activation('softmax'))
 
 # Compile model
 rms = RMSprop()
+model.compile(rms, "categorical_crossentropy", ['acc'])
 
 # Create Spark context
 conf = SparkConf().setAppName('Mnist_Spark_MLP').setMaster('local[8]')
@@ -54,8 +55,7 @@ sc = SparkContext(conf=conf)
 lp_rdd = to_labeled_point(sc, x_train, y_train, categorical=True)
 
 # Initialize SparkModel from Keras model and Spark context
-spark_model = SparkMLlibModel(master_network=model, frequency='epoch', mode='synchronous',
-                              master_metrics=['acc'])
+spark_model = SparkMLlibModel(model=model, frequency='epoch', mode='synchronous')
 
 # Train Spark model
 spark_model.fit(lp_rdd, epochs=5, batch_size=32, verbose=0,
