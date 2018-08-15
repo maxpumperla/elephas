@@ -65,5 +65,7 @@ examples/*.csv
 
 .pytest_cache
 
-test_env/
 venv/
+
+train.csv
+test.csv
