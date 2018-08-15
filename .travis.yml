@@ -22,8 +22,8 @@ install:
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy pytest h5py flask
   - source activate test-environment
   - pip install pytest-cov python-coveralls
-  - pip install -r requirements.txt
   - python setup.py install
+  - pip install -r requirements.txt
 
 script:
   - python -c "import keras.backend"
