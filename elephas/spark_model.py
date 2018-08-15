@@ -185,7 +185,7 @@ class SparkModel(object):
 
 
 def load_spark_model(file_name):
-    model = load_model("test.h5")
+    model = load_model(file_name)
     f = h5py.File(file_name, mode='r')
 
     elephas_conf = json.loads(f.attrs.get('distributed_config'))
