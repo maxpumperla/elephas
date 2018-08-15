@@ -45,7 +45,7 @@ class HttpServer(BaseParameterServer):
     """
 
     def __init__(self, model, optimizer, mode, port=4000, debug=True,
-                 threaded=True, use_reloader=False):
+                 threaded=True, use_reloader=True):
         """Initializes and HTTP server from a serialized Keras model, elephas optimizer,
         a parallelisation mode and a port to run the Flask application on. In
         hogwild mode no read- or write-locks will be acquired, in asynchronous
