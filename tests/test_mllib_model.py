@@ -5,8 +5,7 @@ from keras.optimizers import RMSprop
 from keras.utils import np_utils
 
 from elephas.spark_model import SparkMLlibModel
-from elephas.utils.rdd_utils import to_labeled_point, lp_to_simple_rdd
-from elephas import optimizers as elephas_optimizers
+from elephas.utils.rdd_utils import to_labeled_point
 
 import pytest
 pytest.mark.usefixtures("spark_context")
@@ -44,6 +43,7 @@ model.add(Activation('softmax'))
 
 # Compile model
 rms = RMSprop()
+model.compile(rms, 'categorical_crossentropy', ['acc'])
 
 
 def test_mllib_model(spark_context):
@@ -51,8 +51,7 @@ def test_mllib_model(spark_context):
     lp_rdd = to_labeled_point(spark_context, x_train, y_train, categorical=True)
 
     # Initialize SparkModel from Keras model and Spark context
-    spark_model = SparkMLlibModel(master_network=model, frequency='epoch', mode='synchronous',
-                                  master_metrics=['acc'])
+    spark_model = SparkMLlibModel(model=model, frequency='epoch', mode='synchronous')
 
     # Train Spark model
     spark_model.fit(lp_rdd, epochs=5, batch_size=32, verbose=0,

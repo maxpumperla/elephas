@@ -48,38 +48,32 @@ model.add(Dropout(0.2))
 model.add(Dense(10))
 model.add(Activation('softmax'))
 
-sgd = SGD(lr=0.1)
+model.compile(optimizer="sgd", loss="categorical_crossentropy", metrics=["acc"])
 
 
 def test_spark_model_end_to_end(spark_context):
     rdd = to_simple_rdd(spark_context, x_train, y_train)
 
-    adagrad = elephas_optimizers.Adagrad()
-
     # sync epoch
-    spark_model = SparkModel(model, optimizer=adagrad, frequency='epoch',
-                             mode='synchronous', num_workers=2, master_optimizer=sgd)
+    spark_model = SparkModel(model, frequency='epoch', mode='synchronous', num_workers=2)
     spark_model.fit(rdd, epochs=epochs, batch_size=batch_size, verbose=2, validation_split=0.1)
     score = spark_model.master_network.evaluate(x_test, y_test, verbose=2)
     print('Test accuracy:', score[1])
 
     # sync batch
-    spark_model = SparkModel(model, optimizer=adagrad, frequency='batch',
-                             mode='synchronous', num_workers=2, master_optimizer=sgd)
+    spark_model = SparkModel(model, frequency='batch', mode='synchronous', num_workers=2)
     spark_model.fit(rdd, epochs=epochs, batch_size=batch_size, verbose=2, validation_split=0.1)
     score = spark_model.master_network.evaluate(x_test, y_test, verbose=2)
     print('Test accuracy:', score[1])
 
     # async epoch
-    spark_model = SparkModel(model, optimizer=adagrad, frequency='epoch',
-                             mode='asynchronous', num_workers=2, master_optimizer=sgd)
+    spark_model = SparkModel(model, frequency='epoch', mode='asynchronous')
     spark_model.fit(rdd, epochs=epochs, batch_size=batch_size, verbose=2, validation_split=0.1)
     score = spark_model.master_network.evaluate(x_test, y_test, verbose=2)
     print('Test accuracy:', score[1])
 
     # hogwild epoch
-    spark_model = SparkModel(model, optimizer=adagrad, frequency='epoch',
-                             mode='hogwild', num_workers=2, master_optimizer=sgd)
+    spark_model = SparkModel(model, frequency='epoch', mode='hogwild')
     spark_model.fit(rdd, epochs=epochs, batch_size=batch_size, verbose=2, validation_split=0.1)
     score = spark_model.master_network.evaluate(x_test, y_test, verbose=2)
     print('Test accuracy:', score[1])
