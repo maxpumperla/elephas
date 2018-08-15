@@ -4,7 +4,7 @@ from keras.layers.core import Dense, Dropout, Activation
 from keras.optimizers import RMSprop
 from keras.utils import np_utils
 
-from elephas.spark_model import SparkMLlibModel
+from elephas.spark_model import SparkMLlibModel, load_spark_model
 from elephas.utils.rdd_utils import to_labeled_point
 
 import pytest
@@ -44,6 +44,12 @@ model.add(Activation('softmax'))
 # Compile model
 rms = RMSprop()
 model.compile(rms, 'categorical_crossentropy', ['acc'])
+
+
+def test_serialization():
+    spark_model = SparkMLlibModel(model, frequency='epoch', mode='synchronous', num_workers=2)
+    spark_model.save("test.h5")
+    recov = load_spark_model("test.h5")
 
 
 def test_mllib_model(spark_context):

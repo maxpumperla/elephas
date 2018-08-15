@@ -2,7 +2,10 @@ from __future__ import absolute_import
 from __future__ import print_function
 
 import pyspark
+import h5py
+import json
 from keras.optimizers import serialize as serialize_optimizer
+from keras.models import load_model
 
 from .utils import lp_to_simple_rdd
 from .utils import model_to_dict
@@ -77,11 +80,24 @@ class SparkModel(object):
                 'validation_split': validation_split}
 
     def get_config(self):
-        return {'model': self.master_network.get_config(),
-                'optimizer': self.optimizer.get_config(),
+        return {'parameter_server_mode': self.parameter_server_mode,
+                'elephas_optimizer': self.optimizer.get_config(),
                 'mode': self.mode,
                 'frequency': self.frequency,
                 'num_workers': self.num_workers}
+
+    def save(self, file_name):
+        model = self.master_network
+        model.save(file_name)
+        f = h5py.File(file_name, mode='a')
+
+        f.attrs['distributed_config'] = json.dumps({
+            'class_name': self.__class__.__name__,
+            'config': self.get_config()
+        }).encode('utf8')
+
+        f.flush()
+        f.close()
 
     @property
     def master_network(self):
@@ -166,6 +182,19 @@ class SparkModel(object):
         self.master_network.set_weights(new_parameters)
         if self.mode in ['asynchronous', 'hogwild']:
             self.stop_server()
+
+
+def load_spark_model(file_name):
+    model = load_model("test.h5")
+    f = h5py.File(file_name, mode='r')
+
+    elephas_conf = json.loads(f.attrs.get('distributed_config'))
+    class_name = elephas_conf.get('class_name')
+    config = elephas_conf.get('config')
+    if class_name == "SparkModel":
+        return SparkModel(model=model, **config)
+    elif class_name == "SparkMLlibModel":
+        return SparkMLlibModel(model=model, **config)
 
 
 class SparkMLlibModel(SparkModel):
