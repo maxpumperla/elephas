@@ -1,8 +1,10 @@
 # Elephas: Distributed Deep Learning with Keras & Spark [![Build Status](https://travis-ci.org/maxpumperla/elephas.svg?branch=master)](https://travis-ci.org/maxpumperla/elephas)
 
-Elephas is an extension of [Keras](http://keras.io), which allows you to run distributed deep learning models at scale with [Spark](http://spark.apache.org). Elephas currently supports a number of applications, including:
+Elephas is an extension of [Keras](http://keras.io), which allows you to run distributed deep learning models at 
+scale with [Spark](http://spark.apache.org). Elephas currently supports a number of 
+applications, including:
 
-- [Data-parallel training of deep learning models](#usage-of-data-parallel-models)
+- [Data-parallel training of deep learning models](#basic-spark-integration)
 - [Distributed hyper-parameter optimization](#distributed-hyper-parameter-optimization)
 - [Distributed training of ensemble models](#distributed-training-of-ensemble-models)
 
@@ -12,25 +14,18 @@ Schematically, elephas works as follows.
 ![Elephas](elephas.gif)
 
 Table of content:
-- [Elephas: Distributed Deep Learning with Keras & Spark](#elephas-distributed-deep-learning-with-keras-&-spark-)
-  - [Introduction](#introduction)
-  - [Getting started](#getting-started)
-    - [Installation](#installation)
-    - [Basic example](#basic-example)
-    - [Spark ML example](#spark-ml-example)
-  - [Usage of data-parallel models](#usage-of-data-parallel-models)
-    - [Model updates (optimizers)](#model-updates-optimizers)
-    - [Update frequency](#update-frequency)
-    - [Update mode](#update-mode)
-      - [Asynchronous updates with read and write locks (`mode='asynchronous'`)](#asynchronous-updates-with-read-and-write-locks-modeasynchronous)
-      - [Asynchronous updates without locks (`mode='hogwild'`)](#asynchronous-updates-without-locks-modehogwild)
-      - [Synchronous updates (`mode='synchronous'`)](#synchronous-updates-modesynchronous)
-    - [Degree of parallelization (number of workers)](#degree-of-parallelization-number-of-workers)
-  - [Distributed hyper-parameter optimization](#distributed-hyper-parameter-optimization)
-  - [Distributed training of ensemble models](#distributed-training-of-ensemble-models)
-  - [Discussion](#discussion)
-  - [Future work & contributions](#future-work-&-contributions)
-  - [Literature](#literature)
+* [Elephas: Distributed Deep Learning with Keras & Spark](#elephas-distributed-deep-learning-with-keras-&-spark-)
+  * [Introduction](#introduction)
+  * [Getting started](#getting-started)
+  * [Basic Spark integration](#basic-spark-integration)
+  * [Spark MLlib integration](#spark-mllib-integration)
+  * [Spark ML integration](#spark-ml-integration)
+  * [Distributed hyper-parameter optimization](#distributed-hyper-parameter-optimization)
+  * [Distributed training of ensemble models](#distributed-training-of-ensemble-models)
+  * [Discussion](#discussion)
+  * [Literature](#literature)
+
+
 
 ## Introduction
 Elephas brings deep learning with [Keras](http://keras.io) to [Spark](http://spark.apache.org). Elephas intends to 
@@ -51,58 +46,24 @@ asynchronously.
 
 ## Getting started
 
-### Installation
 Just install elephas from PyPI with, Spark will be installed through `pyspark` for you.
 
 ```
 pip install elephas
 ```
 
-### Using Docker
+That's it, you should now be able to run Elephas examples.
 
-Install and get Docker running by following the [instructions here](https://www.docker.com/).
+## Basic Spark integration
 
-#### Building 
-
-The build takes quite a while to run the first time since many packages need to be downloaded and installed. In the 
-same directory as the ```Dockerfile``` run the following commands
-
-```
-docker build . -t pyspark/elephas
-```
-
-#### Running
-
-The following command starts a container with the Notebook server listening for HTTP connections on port 
-8899 (since local Jupyter notebooks use 8888) without authentication configured. 
-
-```
-docker run -d -p 8899:8888 pyspark/elephas
-```
-
-#### Settings
-
-- Memory 
-In the ```Dockerfile``` the following lines can be adjusted to configure memory settings.
-
-```
-ENV SPARK_OPTS --driver-java-options=-Xms1024M --driver-java-options=-Xmx4096M --driver-java-options=-Dlog4j.logLevel=info
-```
-
-- Other
-Other settings / configurations can be examined here https://github.com/kmader/docker-stacks/tree/master/keras-spark-notebook
-
-### Basic example
-After installing both Elephas and Spark, training a model is done schematically as follows:
-
-- Create a local pyspark context
+After installing both Elephas, you can train a model as follows. First, create a local pyspark context
 ```python
 from pyspark import SparkContext, SparkConf
 conf = SparkConf().setAppName('Elephas_App').setMaster('local[8]')
 sc = SparkContext(conf=conf)
 ```
 
-- Define and compile a Keras model
+Next, you define and compile a Keras model
 ```python
 from keras.models import Sequential
 from keras.layers.core import Dense, Dropout, Activation
@@ -119,60 +80,61 @@ model.add(Activation('softmax'))
 model.compile(loss='categorical_crossentropy', optimizer=SGD())
 ```
 
-- Create an RDD from numpy arrays
+and create an RDD from numpy arrays (or however you want to create an RDD)
 ```python
 from elephas.utils.rdd_utils import to_simple_rdd
-rdd = to_simple_rdd(sc, X_train, Y_train)
+rdd = to_simple_rdd(sc, x_train, y_train)
 ```
 
-- A SparkModel is defined by passing Spark context and Keras model. Additionally, one has choose an optimizer used for 
-updating the elephas model, an update frequency, a parallelization mode and the degree of parallelism, i.e. the number 
-of workers.
+The basic model in Elephas is the `SparkModel`. You initialize a `SparkModel` by passing in a compiled Keras model, 
+an update frequency and a parallelization mode. After that you can simply `fit` the model on your RDD. Elephas `fit`
+has the same options as a Keras model, so you can pass `epochs`, `batch_size` etc. as you're used to from Keras.
+
 ```python
 from elephas.spark_model import SparkModel
-from elephas import optimizers as elephas_optimizers
 
-adagrad = elephas_optimizers.Adagrad()
-spark_model = SparkModel(model, optimizer=adagrad, frequency='epoch', mode='asynchronous', num_workers=2)
-spark_model.train(rdd, epochs=20, batch_size=32, verbose=0, validation_split=0.1)
+spark_model = SparkModel(model, frequency='epoch', mode='asynchronous')
+spark_model.fit(rdd, epochs=20, batch_size=32, verbose=0, validation_split=0.1)
 ```
 
-- Run your script using spark-submit
-```
+Your script can now be run using spark-submit
+```bash
 spark-submit --driver-memory 1G ./your_script.py
 ```
+
 Increasing the driver memory even further may be necessary, as the set of parameters in a network may be very large 
 and collecting them on the driver eats up a lot of resources. See the examples folder for a few working examples.
 
-### Spark MLlib example
-Following up on the last example, to create an RDD of LabeledPoints for supervised training from pairs of 
-numpy arrays, use
+
+## Spark MLlib integration
+
+Following up on the last example, to use Spark's MLlib library with Elephas, you create an RDD of LabeledPoints for 
+supervised training as follows
 
 ```python
 from elephas.utils.rdd_utils import to_labeled_point
-lp_rdd = to_labeled_point(sc, X_train, Y_train, categorical=True)
+lp_rdd = to_labeled_point(sc, x_train, y_train, categorical=True)
 ```
 
 Training a given LabeledPoint-RDD is very similar to what we've seen already
 
 ```python
 from elephas.spark_model import SparkMLlibModel
-adadelta = elephas_optimizers.Adadelta()
-spark_model = SparkMLlibModel(sc,model, optimizer=adadelta, frequency='batch', mode='hogwild', num_workers=2)
-spark_model.train(lp_rdd, nb_epoch=20, batch_size=32, verbose=0, validation_split=0.1, categorical=True, nb_classes=nb_classes)
+spark_model = SparkMLlibModel(model, frequency='batch', mode='hogwild')
+spark_model.train(lp_rdd, epochs=20, batch_size=32, verbose=0, validation_split=0.1, 
+                  categorical=True, nb_classes=nb_classes)
 ```
 
-### Spark ML example
+
+## Spark ML integration
+
 To train a model with a SparkML estimator on a data frame, use the following syntax.
 ```python
-df = to_data_frame(sc, X_train, Y_train, categorical=True)
-test_df = to_data_frame(sc, X_test, Y_test, categorical=True)
+df = to_data_frame(sc, x_train, y_train, categorical=True)
+test_df = to_data_frame(sc, x_test, y_test, categorical=True)
 
-adadelta = elephas_optimizers.Adadelta()
-estimator = ElephasEstimator(sc,model,
-        nb_epoch=nb_epoch, batch_size=batch_size, optimizer=adadelta, frequency='batch', mode='asynchronous', num_workers=2,
-        verbose=0, validation_split=0.1, categorical=True, nb_classes=nb_classes)
-
+estimator = ElephasEstimator(model, epochs=epochs, batch_size=batch_size, frequency='batch', mode='asynchronous',
+                             categorical=True, nb_classes=nb_classes)
 fitted_model = estimator.fit(df)
 ```
 
@@ -184,74 +146,12 @@ prediction = fitted_model.transform(test_df)
 pnl = prediction.select("label", "prediction")
 pnl.show(100)
 
-prediction_and_label= pnl.map(lambda row: (row.label, row.prediction))
+prediction_and_label= pnl.rdd.map(lambda row: (row.label, row.prediction))
 metrics = MulticlassMetrics(prediction_and_label)
 print(metrics.precision())
 print(metrics.recall())
 ```
 
-## Usage of data-parallel models
-
-In the first example above we have seen that an elephas model is instantiated like this
-
-```python
-spark_model = SparkModel(sc,model, optimizer=adagrad, frequency='epoch', mode='asynchronous', num_workers=2)
-```
-So, apart from the canonical Spark context and Keras model, Elephas models have four parameters to tune and 
-we will describe each of them next.
-
-### Model updates (optimizers)
-
-`optimizer`: The optimizers module in elephas is an adaption of the same module in keras, i.e. it provides the 
-user with the following list of optimizers:
-
-- `SGD`
-- `RMSprop`
-- `Adagrad`
-- `Adadelta`
-- `Adam`
-
-Once constructed, each of these can be passed to the *optimizer* parameter of the model. Updates in keras are 
-computed with the help of theano, so most of the data structures in keras optimizers stem from theano. In 
-elephas, gradients have already been computed by the respective workers, so it makes sense to entirely work 
-with numpy arrays internally.
-
-Note that in order to set up an elephas model, you have to specify two optimizers, one for elephas and one for the 
-underlying keras model. Individual workers produce updates according to keras optimizers and the "master" model on the 
-driver uses elephas optimizers to aggregate them. For starters, we recommend keras models with SGD and elephas models 
-with Adagrad or Adadelta.
-
-### Update frequency
-
-`frequency`: The user can decide how often updates are passed to the master model by controlling the *frequency* 
-parameter. To update every batch, choose 'batch' and to update only after every epoch, choose 'epoch'.
-
-### Update mode
-
-`mode`: Currently, there's three different modes available in elephas, each corresponding to a different heuristic or 
-parallelization scheme adopted, which is controlled by the *mode* parameter. The default property is 'asynchronous'.
-
-#### Asynchronous updates with read and write locks (`mode='asynchronous'`)
-
-This mode implements the algorithm described as *downpour* in [1], i.e. each worker can send updates whenever they 
-are ready. The master model makes sure that no update gets lost, i.e. multiple updates get applied at the "same" time,  
-by locking the master parameters while reading and writing parameters. This idea has been used in Google's DistBelief 
-framework.
-
-#### Asynchronous updates without locks (`mode='hogwild'`)
-Essentially the same procedure as above, but without requiring the locks. This heuristic assumes that we still fare 
-well enough, even if we loose an update here or there. Updating parameters lock-free in a non-distributed setting 
-for SGD goes by the name 'Hogwild!' [2], it's distributed extension is called 'Dogwild!' [3].  
-
-#### Synchronous updates (`mode='synchronous'`)
-
-In this mode each worker sends a new batch of parameter updates at the same time, which are then processed on the 
-master. Accordingly, this algorithm is sometimes called *batch synchronous parallel* or just BSP.
-
-### Degree of parallelization (number of workers)
-
-`num_workers`: Lastly, the degree to which we parallelize our training data is controlled by the 
-parameter *num_workers*.
 
 ## Distributed hyper-parameter optimization
 
@@ -267,43 +167,26 @@ this works.
 
 ```python
 from __future__ import print_function
-from hyperopt import Trials, STATUS_OK, tpe
+from hyperopt import STATUS_OK
 from hyperas.distributions import choice, uniform
 
 def data():
-    '''
-    Data providing function:
-
-    Make sure to have every relevant import statement included here and return data as
-    used in model function below. This function is separated from model() so that hyperopt
-    won't reload data for each evaluation run.
-    '''
     from keras.datasets import mnist
     from keras.utils import np_utils
-    (X_train, y_train), (X_test, y_test) = mnist.load_data()
-    X_train = X_train.reshape(60000, 784)
-    X_test = X_test.reshape(10000, 784)
-    X_train = X_train.astype('float32')
-    X_test = X_test.astype('float32')
-    X_train /= 255
-    X_test /= 255
+    (x_train, y_train), (x_test, y_test) = mnist.load_data()
+    x_train = x_train.reshape(60000, 784)
+    x_test = x_test.reshape(10000, 784)
+    x_train = x_train.astype('float32')
+    x_test = x_test.astype('float32')
+    x_train /= 255
+    x_test /= 255
     nb_classes = 10
-    Y_train = np_utils.to_categorical(y_train, nb_classes)
-    Y_test = np_utils.to_categorical(y_test, nb_classes)
-    return X_train, Y_train, X_test, Y_test
+    y_train = np_utils.to_categorical(y_train, nb_classes)
+    y_test = np_utils.to_categorical(y_test, nb_classes)
+    return x_train, y_train, x_test, y_test
 
 
-def model(X_train, Y_train, X_test, Y_test):
-    '''
-    Model providing function:
-
-    Create Keras model with double curly brackets dropped-in as needed.
-    Return value has to be a valid python dictionary with two customary keys:
-        - loss: Specify a numeric evaluation metric to be minimized
-        - status: Just use STATUS_OK and see hyperopt documentation if not feasible
-    The last one is optional, though recommended, namely:
-        - model: specify the model just created so that we can later use it again.
-    '''
+def model(x_train, y_train, x_test, y_test):
     from keras.models import Sequential
     from keras.layers.core import Dense, Dropout, Activation
     from keras.optimizers import RMSprop
@@ -321,21 +204,20 @@ def model(X_train, Y_train, X_test, Y_test):
     rms = RMSprop()
     model.compile(loss='categorical_crossentropy', optimizer=rms)
 
-    model.fit(X_train, Y_train,
+    model.fit(x_train, y_train,
               batch_size={{choice([64, 128])}},
               nb_epoch=1,
               show_accuracy=True,
               verbose=2,
-              validation_data=(X_test, Y_test))
-    score, acc = model.evaluate(X_test, Y_test, show_accuracy=True, verbose=0)
+              validation_data=(x_test, y_test))
+    score, acc = model.evaluate(x_test, y_test, show_accuracy=True, verbose=0)
     print('Test accuracy:', acc)
-    return {'loss': -acc, 'status': STATUS_OK, 'model': model.to_yaml(), 'weights': pickle.dumps(model.get_weights())}
+    return {'loss': -acc, 'status': STATUS_OK, 'model': model.to_yaml()}
 ```
 
 Once the basic setup is defined, running the minimization is done in just a few lines of code:
 
 ```python
-from hyperas import optim
 from elephas.hyperparam import HyperParamModel
 from pyspark import SparkContext, SparkConf
 
