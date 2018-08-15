@@ -60,3 +60,12 @@ examples/.ipynb_checkpoints
 examples/metastore_db
 
 examples/*.csv
+
+.idea/
+
+.pytest_cache
+
+venv/
+
+train.csv
+test.csv

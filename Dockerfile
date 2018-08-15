@@ -1,55 +1,73 @@
-# Extension of the Jupyter Notebooks
-# Distributed under the terms of the Modified BSD / MIT License.
-FROM jupyter/scipy-notebook
+ARG cuda_version=9.0
+ARG cudnn_version=7
+FROM nvidia/cuda:${cuda_version}-cudnn${cudnn_version}-devel
 
-MAINTAINER Elephas Project
-
-USER root
-
-# Spark dependencies
-ENV APACHE_SPARK_VERSION 2.0.1
-ENV PYJ_VERSION py4j-0.10.1-src.zip
-RUN apt-get -y update && \
-    apt-get install -y --no-install-recommends openjdk-7-jre-headless && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-RUN cd /tmp && \
-        wget -q http://d3kbcqa49mib13.cloudfront.net/spark-${APACHE_SPARK_VERSION}-bin-hadoop2.6.tgz && \
-        tar xzf spark-${APACHE_SPARK_VERSION}-bin-hadoop2.6.tgz -C /usr/local && \
-        rm spark-${APACHE_SPARK_VERSION}-bin-hadoop2.6.tgz
-RUN cd /usr/local && ln -s spark-${APACHE_SPARK_VERSION}-bin-hadoop2.6 spark
-
-# Mesos dependencies
-# Currently, Mesos is not available from Debian Jessie.
-# So, we are installing it from Debian Wheezy. Once it
-# becomes available for Debian Jessie. We should switch
-# over to using that instead.
-RUN apt-key adv --keyserver keyserver.ubuntu.com --recv E56151BF && \
-    DISTRO=debian && \
-    CODENAME=wheezy && \
-    echo "deb http://repos.mesosphere.io/${DISTRO} ${CODENAME} main" > /etc/apt/sources.list.d/mesosphere.list && \
-    apt-get -y update && \
-    apt-get --no-install-recommends -y --force-yes install mesos=0.22.1-1.0.debian78 && \
-    apt-get clean && \
+# Install system packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      bzip2 \
+      g++ \
+      git \
+      graphviz \
+      libgl1-mesa-glx \
+      libhdf5-dev \
+      openmpi-bin \
+      wget && \
     rm -rf /var/lib/apt/lists/*
 
-# additional libraries for Keras and Elephas
-# RUN apt-get --no-install-recommends -y --force-yes install liblapack-dev libblas-dev gfortran
+# Install conda
+ENV CONDA_DIR /opt/conda
+ENV PATH $CONDA_DIR/bin:$PATH
 
-# Spark and Mesos config
-ENV SPARK_HOME /usr/local/spark
-ENV PYTHONPATH $SPARK_HOME/python:$SPARK_HOME/python/lib/$PYJ_LIB_VERSION
-ENV MESOS_NATIVE_LIBRARY /usr/local/lib/libmesos.so
-ENV SPARK_OPTS --driver-java-options=-Xms1024M --driver-java-options=-Xmx4096M --driver-java-options=-Dlog4j.logLevel=info
+RUN wget --quiet --no-check-certificate https://repo.continuum.io/miniconda/Miniconda3-4.2.12-Linux-x86_64.sh && \
+    echo "c59b3dd3cad550ac7596e0d599b91e75d88826db132e4146030ef471bb434e9a *Miniconda3-4.2.12-Linux-x86_64.sh" | sha256sum -c - && \
+    /bin/bash /Miniconda3-4.2.12-Linux-x86_64.sh -f -b -p $CONDA_DIR && \
+    rm Miniconda3-4.2.12-Linux-x86_64.sh && \
+    echo export PATH=$CONDA_DIR/bin:'$PATH' > /etc/profile.d/conda.sh
+
+# Install Python packages and keras
+ENV NB_USER keras
+ENV NB_UID 1000
+
+RUN useradd -m -s /bin/bash -N -u $NB_UID $NB_USER && \
+    chown $NB_USER $CONDA_DIR -R && \
+    mkdir -p /src && \
+    chown $NB_USER /src
 
 USER $NB_USER
 
-# Install Python 3 Tensorflow
-RUN conda install --quiet --yes 'tensorflow=0.9.0'
-# Keras
-RUN conda install --channel https://conda.anaconda.org/KEHANG --quiet --yes 'keras=1.0.8'
-# Use the latest version of hyperopts (python 3.5 compatibility)
-RUN pip install https://github.com/hyperopt/hyperopt/archive/master.zip
-# Elephas for distributed spark
-RUN pip install elephas
-RUN pip install py4j
+ARG python_version=2.7
+
+RUN conda install -y python=${python_version} && \
+    pip install --upgrade pip && \
+    pip install \
+      sklearn_pandas \
+      tensorflow-gpu && \
+      conda install \
+      bcolz \
+      h5py \
+      matplotlib \
+      mkl \
+      nose \
+      notebook \
+      Pillow \
+      pandas \
+      pygpu \
+      pyyaml \
+      scikit-learn \
+      six \
+    conda clean -yt
+
+ENV PYTHONPATH='/src/:$PYTHONPATH'
+
+RUN mkdir -p app
+WORKDIR /app
+COPY ./requirements.txt /app
+
+# Install requirements
+RUN pip install -r ./requirements.txt
+RUN pip install git+https://github.com/hyperopt/hyperopt.git
+
+
+EXPOSE 8888
+
+CMD jupyter notebook --port=8888 --ip=0.0.0.0

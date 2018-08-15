@@ -4,12 +4,11 @@ from __future__ import print_function
 from keras.datasets import mnist
 from keras.models import Sequential
 from keras.layers.core import Dense, Dropout, Activation
-from keras.optimizers import Adam
 from keras.utils import np_utils
+from keras import optimizers
 
 from elephas.ml_model import ElephasEstimator
 from elephas.ml.adapter import to_data_frame
-from elephas import optimizers as elephas_optimizers
 
 from pyspark import SparkContext, SparkConf
 from pyspark.mllib.evaluation import MulticlassMetrics
@@ -19,7 +18,7 @@ from pyspark.ml import Pipeline
 # Define basic parameters
 batch_size = 64
 nb_classes = 10
-nb_epoch = 1
+epochs = 1
 
 # Load data
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
@@ -47,11 +46,6 @@ model.add(Dropout(0.2))
 model.add(Dense(10))
 model.add(Activation('softmax'))
 
-
-# Compile model
-adam = Adam()
-model.compile(loss='categorical_crossentropy', optimizer=adam)
-
 # Create Spark context
 conf = SparkConf().setAppName('Mnist_Spark_MLP').setMaster('local[8]')
 sc = SparkContext(conf=conf)
@@ -60,17 +54,18 @@ sc = SparkContext(conf=conf)
 df = to_data_frame(sc, x_train, y_train, categorical=True)
 test_df = to_data_frame(sc, x_test, y_test, categorical=True)
 
-# Define elephas optimizer
-adadelta = elephas_optimizers.Adadelta()
+sgd = optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
+sgd_conf = optimizers.serialize(sgd)
 
 # Initialize Spark ML Estimator
 estimator = ElephasEstimator()
 estimator.set_keras_model_config(model.to_yaml())
-estimator.set_optimizer_config(adadelta.get_config())
-estimator.set_nb_epoch(nb_epoch)
+estimator.set_optimizer_config(sgd_conf)
+estimator.set_mode("synchronous")
+estimator.set_loss("categorical_crossentropy")
+estimator.set_metrics(['acc'])
+estimator.set_epochs(epochs)
 estimator.set_batch_size(batch_size)
-estimator.set_num_workers(1)
-estimator.set_verbosity(0)
 estimator.set_validation_split(0.1)
 estimator.set_categorical_labels(True)
 estimator.set_nb_classes(nb_classes)
@@ -84,7 +79,7 @@ prediction = fitted_pipeline.transform(test_df)
 pnl = prediction.select("label", "prediction")
 pnl.show(100)
 
-prediction_and_label = pnl.map(lambda row: (row.label, row.prediction))
+prediction_and_label = pnl.rdd.map(lambda row: (row.label, row.prediction))
 metrics = MulticlassMetrics(prediction_and_label)
 print(metrics.precision())
 print(metrics.recall())

@@ -1,365 +1,207 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-import numpy as np
-from itertools import tee
-import socket
-from multiprocessing import Process
-import six.moves.cPickle as pickle
-from six.moves import range
-from flask import Flask, request
-try:
-    import urllib.request as urllib2
-except ImportError:
-    import urllib2
+import pyspark
+from keras.optimizers import serialize as serialize_optimizer
 
-from pyspark.mllib.linalg import Matrix, Vector
-
-from .utils.rwlock import RWLock
-from .utils.functional_utils import subtract_params
-from .utils.rdd_utils import lp_to_simple_rdd
-from .mllib.adapter import to_matrix, from_matrix, to_vector, from_vector
-from .optimizers import SGD as default_optimizer
-
-from keras.models import model_from_yaml
-
-
-def get_server_weights(master_url='localhost:5000'):
-    '''
-    Retrieve master weights from parameter server
-    '''
-    request = urllib2.Request('http://{0}/parameters'.format(master_url),
-                              headers={'Content-Type': 'application/elephas'})
-    ret = urllib2.urlopen(request).read()
-    weights = pickle.loads(ret)
-    return weights
-
-
-def put_deltas_to_server(delta, master_url='localhost:5000'):
-    '''
-    Update master parameters with deltas from training process
-    '''
-    request = urllib2.Request('http://{0}/update'.format(master_url),
-                              pickle.dumps(delta, -1), headers={'Content-Type': 'application/elephas'})
-    return urllib2.urlopen(request).read()
+from .utils import lp_to_simple_rdd
+from .utils import model_to_dict
+from .mllib import to_matrix, from_matrix, to_vector, from_vector
+from .optimizers import SGD
+from .worker import AsynchronousSparkWorker, SparkWorker
+from .parameter import HttpServer, SocketServer
+from .parameter import HttpClient, SocketClient
 
 
 class SparkModel(object):
-    '''
-    SparkModel is the main abstraction of elephas. Every other model
-    should inherit from it.
-    '''
-    def __init__(self, sc, master_network, optimizer=None, mode='asynchronous', frequency='epoch',
-                 num_workers=4,
-                 master_optimizer="adam",
-                 master_loss="categorical_crossentropy",
-                 master_metrics=None,
-                 custom_objects=None,
-                 *args, **kwargs):
 
+    def __init__(self, model, mode='asynchronous', frequency='epoch',  parameter_server_mode='http', num_workers=None,
+                 elephas_optimizer=None, custom_objects=None, *args, **kwargs):
+        """SparkModel
 
-        self.spark_context = sc
-        self._master_network = master_network
+        Base class for distributed training on RDDs. Spark model takes a Keras
+        model as master network, an optimization scheme, a parallelisation mode
+        and an averaging frequency.
+
+        :param model: Compiled Keras model
+        :param mode: String, choose from `asynchronous`, `synchronous` and `hogwild`
+        :param frequency: String, either `epoch` or `batch`
+        :param parameter_server_mode: String, either `http` or `socket`
+        :param num_workers: int, number of workers used for training (defaults to None)
+        :param elephas_optimizer: Elephas optimizer
+        :param custom_objects: Keras custom objects
+        """
+
+        self._master_network = model
+        if not hasattr(model, "loss"):
+            raise Exception("Compile your Keras model before initializing an Elephas model with it")
+        metrics = model.metrics
+        loss = model.loss
+        optimizer = serialize_optimizer(model.optimizer)
+
         if custom_objects is None:
             custom_objects = {}
-        if master_metrics is None:
-            master_metrics = ["accuracy"]
-        if optimizer is None:
-            self.optimizer = default_optimizer()
+        if metrics is None:
+            metrics = ["accuracy"]
+        if elephas_optimizer is None:
+            self.optimizer = SGD()
         else:
-            self.optimizer = optimizer
+            self.optimizer = elephas_optimizer
         self.mode = mode
         self.frequency = frequency
         self.num_workers = num_workers
-        self.weights = master_network.get_weights()
+        self.weights = self._master_network.get_weights()
         self.pickled_weights = None
-        self.lock = RWLock()
-        self.master_optimizer = master_optimizer
-        self.master_loss = master_loss
-        self.master_metrics = master_metrics
+        self.master_optimizer = optimizer
+        self.master_loss = loss
+        self.master_metrics = metrics
         self.custom_objects = custom_objects
+        self.parameter_server_mode = parameter_server_mode
+
+        self.serialized_model = model_to_dict(self.master_network)
+        if self.parameter_server_mode == 'http':
+            self.parameter_server = HttpServer(self.serialized_model, self.optimizer, self.mode)
+            self.client = HttpClient()
+        elif self.parameter_server_mode == 'socket':
+            self.parameter_server = SocketServer(self.serialized_model)
+            self.client = SocketClient()
+        else:
+            raise ValueError("Parameter server mode has to be either `http` or `socket`, "
+                             "got {}".format(self.parameter_server_mode))
 
     @staticmethod
-    def determine_master():
-        '''
-        Get URL of parameter server, running on master
-        '''
-        master_url = socket.gethostbyname(socket.gethostname()) + ':5000'
-        return master_url
-
-    def get_train_config(self, nb_epoch, batch_size,
-                         verbose, validation_split):
-        '''
-        Get configuration of training parameters
-        '''
-        train_config = {}
-        train_config['nb_epoch'] = nb_epoch
-        train_config['batch_size'] = batch_size
-        train_config['verbose'] = verbose
-        train_config['validation_split'] = validation_split
-        return train_config
+    def get_train_config(epochs, batch_size, verbose, validation_split):
+        return {'epochs': epochs,
+                'batch_size': batch_size,
+                'verbose': verbose,
+                'validation_split': validation_split}
 
     def get_config(self):
-        '''
-        Get configuration of model parameters
-        '''
-        model_config = {}
-        model_config['model'] = self.master_network.get_config()
-        model_config['optimizer'] = self.optimizer.get_config()
-        model_config['mode'] = self.mode
-        return model_config
+        return {'model': self.master_network.get_config(),
+                'optimizer': self.optimizer.get_config(),
+                'mode': self.mode,
+                'frequency': self.frequency,
+                'num_workers': self.num_workers}
 
     @property
     def master_network(self):
-        ''' Get master network '''
         return self._master_network
 
     @master_network.setter
     def master_network(self, network):
-        ''' Set master network '''
         self._master_network = network
 
     def start_server(self):
-        ''' Start parameter server'''
-        self.server = Process(target=self.start_service)
-        self.server.start()
+        self.parameter_server.start()
 
     def stop_server(self):
-        ''' Terminate parameter server'''
-        self.server.terminate()
-        self.server.join()
-
-    def start_service(self):
-        ''' Define service and run flask app'''
-        app = Flask(__name__)
-        self.app = app
-
-        @app.route('/')
-        def home():
-            return 'Elephas'
-
-        @app.route('/parameters', methods=['GET'])
-        def get_parameters():
-            if self.mode == 'asynchronous':
-                self.lock.acquire_read()
-            self.pickled_weights = pickle.dumps(self.weights, -1)
-            pickled_weights = self.pickled_weights
-            if self.mode == 'asynchronous':
-                self.lock.release()
-            return pickled_weights
-
-        @app.route('/update', methods=['POST'])
-        def update_parameters():
-            delta = pickle.loads(request.data)
-            if self.mode == 'asynchronous':
-                self.lock.acquire_write()
-
-            if not self.master_network.built:
-                self.master_network.build()
-
-            base_constraint = lambda a: a
-            constraints = [base_constraint for x in self.weights]
-
-            self.weights = self.optimizer.get_updates(self.weights, constraints, delta)
-
-            if self.mode == 'asynchronous':
-                self.lock.release()
-
-            return 'Update done'
-
-        self.app.run(host='0.0.0.0', debug=True,
-                     threaded=True, use_reloader=False)
+        self.parameter_server.stop()
 
     def predict(self, data):
-        '''
-        Get prediction probabilities for a numpy array of features
-        '''
+        """Get prediction probabilities for a numpy array of features
+        """
         return self.master_network.predict(data)
 
     def predict_classes(self, data):
-        '''
-        Predict classes for a numpy array of features
-        '''
+        """ Predict classes for a numpy array of features
+        """
         return self.master_network.predict_classes(data)
 
-    def train(self, rdd, nb_epoch=10, batch_size=32,
-              verbose=0, validation_split=0.1):
-        '''
-        Train an elephas model.
-        '''
-        rdd = rdd.repartition(self.num_workers)
-        master_url = self.determine_master()
+    def fit(self, rdd, epochs=10, batch_size=32,
+            verbose=0, validation_split=0.1):
+        """
+        Train an elephas model on an RDD. The Keras model configuration as specified
+        in the elephas model is sent to Spark workers, abd each worker will be trained
+        on their data partition.
+
+        :param rdd: RDD with features and labels
+        :param epochs: number of epochs used for training
+        :param batch_size: batch size used for training
+        :param verbose: logging verbosity level (0, 1 or 2)
+        :param validation_split: percentage of data set aside for validation
+        """
+        if self.num_workers:
+            rdd = rdd.repartition(self.num_workers)
 
         if self.mode in ['asynchronous', 'synchronous', 'hogwild']:
-            self._train(rdd, nb_epoch, batch_size, verbose, validation_split, master_url)
+            self._fit(rdd, epochs, batch_size, verbose, validation_split)
         else:
-            print("""Choose from one of the modes: asynchronous, synchronous or hogwild""")
+            raise ValueError("Choose from one of the modes: asynchronous, synchronous or hogwild")
 
-    def _train(self, rdd, nb_epoch=10, batch_size=32, verbose=0,
-               validation_split=0.1, master_url='localhost:5000'):
-        '''
-        Protected train method to make wrapping of modes easier
-        '''
-        self.master_network.compile(optimizer=self.master_optimizer, loss=self.master_loss, metrics=self.master_metrics)
+    def _fit(self, rdd, epochs, batch_size, verbose, validation_split):
+        """Protected train method to make wrapping of modes easier
+        """
+        self.master_network.compile(optimizer=self.master_optimizer,
+                                    loss=self.master_loss,
+                                    metrics=self.master_metrics)
         if self.mode in ['asynchronous', 'hogwild']:
             self.start_server()
+        train_config = self.get_train_config(epochs, batch_size, verbose, validation_split)
+        mode = self.parameter_server_mode
+        freq = self.frequency
+        optimizer = self.master_optimizer
+        loss = self.master_loss
+        metrics = self.master_metrics
+        custom = self.custom_objects
+
         yaml = self.master_network.to_yaml()
-        train_config = self.get_train_config(nb_epoch, batch_size,
-                                             verbose, validation_split)
+        init = self.master_network.get_weights()
+        parameters = rdd.context.broadcast(init)
+
         if self.mode in ['asynchronous', 'hogwild']:
-            worker = AsynchronousSparkWorker(
-                yaml, train_config, self.frequency, master_url,
-                self.master_optimizer, self.master_loss, self.master_metrics, self.custom_objects
-            )
+            worker = AsynchronousSparkWorker(yaml, parameters, mode, train_config, freq, optimizer, loss, metrics, custom)
             rdd.mapPartitions(worker.train).collect()
-            new_parameters = get_server_weights(master_url)
+            new_parameters = self.client.get_parameters()
         elif self.mode == 'synchronous':
-            init = self.master_network.get_weights()
-            parameters = self.spark_context.broadcast(init)
-            worker = SparkWorker(
-                yaml, parameters, train_config, 
-                self.master_optimizer, self.master_loss, self.master_metrics, self.custom_objects
-            )
+
+            worker = SparkWorker(yaml, parameters, train_config, optimizer, loss, metrics, custom)
             deltas = rdd.mapPartitions(worker.train).collect()
             new_parameters = self.master_network.get_weights()
             for delta in deltas:
-                constraints = self.master_network.constraints
+                base_constraint = lambda a: a
+                constraints = [base_constraint for _ in self.weights]
                 new_parameters = self.optimizer.get_updates(self.weights, constraints, delta)
+        else:
+            raise ValueError("Unsupported mode {}".format(self.mode))
         self.master_network.set_weights(new_parameters)
         if self.mode in ['asynchronous', 'hogwild']:
             self.stop_server()
 
 
-class SparkWorker(object):
-    '''
-    Synchronous Spark worker. This code will be executed on workers.
-    '''
-    def __init__(self, yaml, parameters, train_config, master_optimizer, master_loss, master_metrics, custom_objects):
-        self.yaml = yaml
-        self.parameters = parameters
-        self.train_config = train_config
-        self.master_optimizer = master_optimizer
-        self.master_loss = master_loss
-        self.master_metrics = master_metrics
-        self.custom_objects = custom_objects
-
-    def train(self, data_iterator):
-        '''
-        Train a keras model on a worker
-        '''
-        feature_iterator, label_iterator = tee(data_iterator, 2)
-        x_train = np.asarray([x for x, y in feature_iterator])
-        y_train = np.asarray([y for x, y in label_iterator])
-
-        model = model_from_yaml(self.yaml, self.custom_objects)
-        model.compile(optimizer=self.master_optimizer, loss=self.master_loss, metrics=self.master_metrics)
-        model.set_weights(self.parameters.value)
-        weights_before_training = model.get_weights()
-        if x_train.shape[0] > self.train_config.get('batch_size'):
-            model.fit(x_train, y_train, **self.train_config)
-        weights_after_training = model.get_weights()
-        deltas = subtract_params(weights_before_training, weights_after_training)
-        yield deltas
-
-
-class AsynchronousSparkWorker(object):
-    '''
-    Asynchronous Spark worker. This code will be executed on workers.
-    '''
-    def __init__(self, yaml, train_config, frequency, master_url, master_optimizer, master_loss, master_metrics, custom_objects):
-        self.yaml = yaml
-        self.train_config = train_config
-        self.frequency = frequency
-        self.master_url = master_url
-        self.master_optimizer = master_optimizer
-        self.master_loss = master_loss
-        self.master_metrics = master_metrics
-        self.custom_objects = custom_objects
-
-
-    def train(self, data_iterator):
-        '''
-        Train a keras model on a worker and send asynchronous updates
-        to parameter server
-        '''
-        feature_iterator, label_iterator = tee(data_iterator, 2)
-        x_train = np.asarray([x for x, y in feature_iterator])
-        y_train = np.asarray([y for x, y in label_iterator])
-
-        if x_train.size == 0:
-            return
-
-        model = model_from_yaml(self.yaml, self.custom_objects)
-        model.compile(optimizer=self.master_optimizer, loss=self.master_loss, metrics=self.master_metrics)
-
-        nb_epoch = self.train_config['nb_epoch']
-        batch_size = self.train_config.get('batch_size')
-        nb_train_sample = x_train.shape[0]
-        nb_batch = int(np.ceil(nb_train_sample/float(batch_size)))
-        index_array = np.arange(nb_train_sample)
-        batches = [(i*batch_size, min(nb_train_sample, (i+1)*batch_size)) for i in range(0, nb_batch)]
-
-        if self.frequency == 'epoch':
-            for epoch in range(nb_epoch):
-                weights_before_training = get_server_weights(self.master_url)
-                model.set_weights(weights_before_training)
-                self.train_config['epochs'] = 1
-                self.train_config['nb_epoch'] = 1
-                if x_train.shape[0] > batch_size:
-                    model.fit(x_train, y_train, **self.train_config)
-                self.train_config['nb_epoch'] = nb_epoch
-                weights_after_training = model.get_weights()
-                deltas = subtract_params(weights_before_training, weights_after_training)
-                put_deltas_to_server(deltas, self.master_url)
-        elif self.frequency == 'batch':
-            from keras.engine.training import slice_X
-            for epoch in range(nb_epoch):
-                if x_train.shape[0] > batch_size:
-                    for (batch_start, batch_end) in batches:
-                        weights_before_training = get_server_weights(self.master_url)
-                        model.set_weights(weights_before_training)
-                        batch_ids = index_array[batch_start:batch_end]
-                        X = slice_X(x_train, batch_ids)
-                        y = slice_X(y_train, batch_ids)
-                        model.train_on_batch(X, y)
-                        weights_after_training = model.get_weights()
-                        deltas = subtract_params(weights_before_training, weights_after_training)
-                        put_deltas_to_server(deltas, self.master_url)
-        else:
-            print('Choose frequency to be either batch or epoch')
-        yield []
-
-
 class SparkMLlibModel(SparkModel):
-    '''
-    MLlib model takes RDDs of LabeledPoints. Internally we just convert
-    back to plain old pair RDDs and continue as in SparkModel
-    '''
-    def __init__(self, sc, master_network, optimizer=None, mode='asynchronous', frequency='epoch', num_workers=4,
-                 master_optimizer="adam",
-                 master_loss="categorical_crossentropy",
-                 master_metrics=None,
-                 custom_objects=None):
-        SparkModel.__init__(self, sc, master_network, optimizer, mode, frequency, num_workers,
-                            master_optimizer=master_optimizer, master_loss=master_loss, master_metrics=master_metrics,
-                            custom_objects=custom_objects)
 
-    def train(self, labeled_points, nb_epoch=10, batch_size=32, verbose=0, validation_split=0.1,
+    def __init__(self, model, mode='asynchronous', frequency='epoch', parameter_server_mode='http',
+                 num_workers=4, elephas_optimizer=None, custom_objects=None, *args, **kwargs):
+        """SparkMLlibModel
+
+        The Spark MLlib model takes RDDs of LabeledPoints for training.
+
+        :param model: Compiled Keras model
+        :param mode: String, choose from `asynchronous`, `synchronous` and `hogwild`
+        :param frequency: String, either `epoch` or `batch`
+        :param parameter_server_mode: String, either `http` or `socket`
+        :param num_workers: int, number of workers used for training (defaults to None)
+        :param elephas_optimizer: Elephas optimizer
+        :param custom_objects: Keras custom objects
+        """
+        SparkModel.__init__(self, model=model, mode=mode, frequency=frequency,
+                            parameter_server_mode=parameter_server_mode, num_workers=num_workers,
+                            elephas_optimizer=elephas_optimizer, custom_objects=custom_objects, *args, **kwargs)
+
+    def fit(self, labeled_points, epochs=10, batch_size=32, verbose=0, validation_split=0.1,
               categorical=False, nb_classes=None):
-        '''
-        Train an elephas model on an RDD of LabeledPoints
-        '''
+        """Train an elephas model on an RDD of LabeledPoints
+        """
         rdd = lp_to_simple_rdd(labeled_points, categorical, nb_classes)
         rdd = rdd.repartition(self.num_workers)
-        self._train(rdd, nb_epoch, batch_size, verbose, validation_split)
+        self._fit(rdd=rdd, epochs=epochs, batch_size=batch_size, verbose=verbose, validation_split=validation_split)
 
     def predict(self, mllib_data):
-        '''
-        Predict probabilities for an RDD of features
-        '''
-        if isinstance(mllib_data, Matrix):
+        """Predict probabilities for an RDD of features
+        """
+        if isinstance(mllib_data, pyspark.mllib.linalg.Matrix):
             return to_matrix(self.master_network.predict(from_matrix(mllib_data)))
-        elif isinstance(mllib_data, Vector):
+        elif isinstance(mllib_data, pyspark.mllib.linalg.Vector):
             return to_vector(self.master_network.predict(from_vector(mllib_data)))
         else:
-            print('Provide either an MLLib matrix or vector')
+            raise ValueError('Provide either an MLLib matrix or vector, got {}'.format(mllib_data.__name__))

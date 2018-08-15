@@ -1,9 +1,9 @@
-'''
+"""
 This is essentially a copy of keras' optimizers.py.
 We have to modify the base class 'Optimizer' here,
 as the gradients will be provided by the Spark workers,
 not by one of the backends (Theano or Tensorflow).
-'''
+"""
 from __future__ import absolute_import
 from keras import backend as K
 from keras.optimizers import TFOptimizer
@@ -15,38 +15,38 @@ from six.moves import zip
 
 
 def clip_norm(g, c, n):
-    ''' Clip gradients '''
+    """Clip gradients
+    """
     if c > 0:
         g = K.switch(K.ge(n, c), g * c / n, g)
     return g
 
 
 def kl_divergence(p, p_hat):
-    ''' Kullbach-Leibler divergence '''
+    """Kullbach-Leibler divergence """
     return p_hat - p + p * K.log(p / p_hat)
 
 
 class Optimizer(object):
-    '''
-    Optimizer for elephas models, adapted from
+    """Optimizer for elephas models, adapted from
     respective Keras module.
-    '''
+    """
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         self.updates = []
 
     def get_state(self):
-        ''' Get latest status of optimizer updates '''
+        """ Get latest status of optimizer updates """
         return [u[0].get_value() for u in self.updates]
 
     def set_state(self, value_list):
-        ''' Set current status of optimizer '''
+        """ Set current status of optimizer """
         assert len(self.updates) == len(value_list)
         for u, v in zip(self.updates, value_list):
             u[0].set_value(v)
 
     def get_updates(self, params, constraints, grads):
-        ''' Compute updates from gradients and constraints '''
+        """ Compute updates from gradients and constraints """
         raise NotImplementedError
 
     def get_gradients(self, grads, params):
@@ -61,12 +61,12 @@ class Optimizer(object):
         return K.shared(grads)
 
     def get_config(self):
-        ''' Get configuration dictionary '''
+        """ Get configuration dictionary """
         return {"class_name": self.__class__.__name__}
 
 
 class SGD(Optimizer):
-    ''' SGD, optionally with nesterov momentum '''
+    """SGD, optionally with nesterov momentum """
     def __init__(self, lr=0.01, momentum=0., decay=0.,
                  nesterov=False, *args, **kwargs):
         super(SGD, self).__init__(**kwargs)
@@ -101,9 +101,8 @@ class SGD(Optimizer):
 
 
 class RMSprop(Optimizer):
-    '''
-    Reference: www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf
-    '''
+    """Reference: www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf
+    """
     def __init__(self, lr=0.001, rho=0.9, epsilon=1e-6, *args, **kwargs):
         super(RMSprop, self).__init__(**kwargs)
         self.__dict__.update(locals())
@@ -131,9 +130,8 @@ class RMSprop(Optimizer):
 
 
 class Adagrad(Optimizer):
-    '''
-    Reference: http://www.magicbroom.info/Papers/DuchiHaSi10.pdf
-    '''
+    """Reference: http://www.magicbroom.info/Papers/DuchiHaSi10.pdf
+    """
     def __init__(self, lr=0.01, epsilon=1e-6, *args, **kwargs):
         super(Adagrad, self).__init__(**kwargs)
         self.__dict__.update(locals())
@@ -156,9 +154,8 @@ class Adagrad(Optimizer):
 
 
 class Adadelta(Optimizer):
-    '''
-        Reference: http://arxiv.org/abs/1212.5701
-    '''
+    """Reference: http://arxiv.org/abs/1212.5701
+    """
     def __init__(self, lr=1.0, rho=0.95, epsilon=1e-6, *args, **kwargs):
         super(Adadelta, self).__init__(**kwargs)
         self.__dict__.update(locals())
@@ -190,10 +187,9 @@ class Adadelta(Optimizer):
 
 
 class Adam(Optimizer):
-    '''
-        Reference: http://arxiv.org/abs/1412.6980v8
-        Default parameters follow those provided in the original paper.
-    '''
+    """Reference: http://arxiv.org/abs/1412.6980v8
+    Default parameters follow those provided in the original paper.
+    """
     def __init__(self, lr=0.001, beta_1=0.9, beta_2=0.999,
                  epsilon=1e-8, *args, **kwargs):
         super(Adam, self).__init__(**kwargs)

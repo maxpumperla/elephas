@@ -16,7 +16,7 @@ from pyspark import SparkContext, SparkConf
 # Define basic parameters
 batch_size = 64
 nb_classes = 10
-nb_epoch = 10
+epochs = 10
 
 # Create Spark context
 conf = SparkConf().setAppName('Mnist_Spark_MLP').setMaster('local[8]')
@@ -49,21 +49,16 @@ model.add(Dense(10))
 model.add(Activation('softmax'))
 
 sgd = SGD(lr=0.1)
+model.compile(sgd, 'categorical_crossentropy', ['acc'])
 
 # Build RDD from numpy features and labels
 rdd = to_simple_rdd(sc, x_train, y_train)
 
 # Initialize SparkModel from Keras model and Spark context
-adagrad = elephas_optimizers.Adagrad()
-spark_model = SparkModel(sc,
-                         model,
-                         optimizer=adagrad,
-                         frequency='epoch',
-                         mode='asynchronous',
-                         num_workers=2,master_optimizer=sgd)
+spark_model = SparkModel(model, frequency='epoch', mode='asynchronous')
 
 # Train Spark model
-spark_model.train(rdd, nb_epoch=nb_epoch, batch_size=batch_size, verbose=2, validation_split=0.1)
+spark_model.fit(rdd, epochs=epochs, batch_size=batch_size, verbose=2, validation_split=0.1)
 
 # Evaluate Spark model by evaluating the underlying model
 score = spark_model.master_network.evaluate(x_test, y_test, verbose=2)

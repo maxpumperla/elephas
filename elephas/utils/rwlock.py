@@ -2,6 +2,7 @@
 Many readers can hold the lock XOR one and only one writer
 http://majid.info/blog/a-reader-writer-lock-for-python/
 """
+from __future__ import absolute_import
 import threading
 
 version = """$Id: 04-1.html,v 1.3 2006/12/05 17:45:12 majid Exp $"""
