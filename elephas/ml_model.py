@@ -8,27 +8,20 @@ from pyspark.ml import Estimator, Model
 from pyspark.sql.types import StringType, DoubleType, StructField
 
 from keras.models import model_from_yaml
+from keras.optimizers import get as get_optimizer
+
 
 from .spark_model import SparkModel
 from .utils.rdd_utils import from_vector
 from .ml.adapter import df_to_simple_rdd
-from .ml.params import HasCategoricalLabels
-from .ml.params import HasValidationSplit
-from .ml.params import HasKerasModelConfig
-from .ml.params import HasMode
-from .ml.params import HasEpochs
-from .ml.params import HasBatchSize
-from .ml.params import HasFrequency
-from .ml.params import HasVerbosity
-from .ml.params import HasNumberOfClasses
-from .ml.params import HasNumberOfWorkers
-from .ml.params import HasOptimizerConfig
+from .ml.params import *
 from .optimizers import get
 
 
 class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasKerasModelConfig, HasFeaturesCol,
                        HasLabelCol, HasMode, HasEpochs, HasBatchSize, HasFrequency, HasVerbosity, HasNumberOfClasses,
-                       HasNumberOfWorkers, HasOptimizerConfig, HasOutputCol):
+                       HasNumberOfWorkers, HasElephasOptimizerConfig, HasOutputCol, HasLoss,
+                       HasMetrics, HasKerasOptimizerConfig):
     """
     SparkML Estimator implementation of an elephas model. This estimator takes all relevant arguments for model
     compilation and training.
@@ -52,14 +45,18 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
         simple_rdd = df_to_simple_rdd(df, categorical=self.get_categorical_labels(), nb_classes=self.get_nb_classes(),
                                       features_col=self.getFeaturesCol(), label_col=self.getLabelCol())
         simple_rdd = simple_rdd.repartition(self.get_num_workers())
-        optimizer = None
-        if self.get_optimizer_config() is not None:
-            optimizer = get({'class_name': self.get_optimizer_config()['class_name'],
+        elephas_optimizer = None
+        if self.get_elephas_optimizer_config() is not None:
+            elephas_optimizer = get({'class_name': self.get_optimizer_config()['class_name'],
                              'config': self.get_optimizer_config()})
 
         keras_model = model_from_yaml(self.get_keras_model_config())
+        metrics = self.get_metrics()
+        loss = self.get_loss()
+        optimizer = get_optimizer(self.get_optimizer_config())
+        keras_model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
 
-        spark_model = SparkModel(keras_model, optimizer=optimizer,
+        spark_model = SparkModel(model=keras_model, elephas_optimizer=elephas_optimizer,
                                  mode=self.get_mode(), frequency=self.get_frequency(),
                                  num_workers=self.get_num_workers())
         spark_model.fit(simple_rdd, epochs=self.get_nb_epoch(), batch_size=self.get_batch_size(),

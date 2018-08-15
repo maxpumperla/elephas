@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 
 import pyspark
+from keras.optimizers import serialize as serialize_optimizer
 
 from .utils import lp_to_simple_rdd
 from .utils import model_to_dict
@@ -14,44 +15,46 @@ from .parameter import HttpClient, SocketClient
 
 class SparkModel(object):
 
-    def __init__(self, master_network, optimizer=None, mode='asynchronous', frequency='epoch',
-                 num_workers=None, master_optimizer="sgd", master_loss="categorical_crossentropy",
-                 master_metrics=None, custom_objects=None, parameter_server_mode='http', *args, **kwargs):
+    def __init__(self, model, mode='asynchronous', frequency='epoch',  parameter_server_mode='http', num_workers=None,
+                 elephas_optimizer=None, custom_objects=None, *args, **kwargs):
         """SparkModel
 
         Base class for distributed training on RDDs. Spark model takes a Keras
         model as master network, an optimization scheme, a parallelisation mode
         and an averaging frequency.
 
-        :param master_network: Keras model (not compiled)
-        :param optimizer: Elephas optimizer
+        :param model: Compiled Keras model
         :param mode: String, choose from `asynchronous`, `synchronous` and `hogwild`
         :param frequency: String, either `epoch` or `batch`
-        :param num_workers: int, number of workers used for training (defaults to None)
-        :param master_optimizer: Keras optimizer for master network
-        :param master_loss: Keras loss function for master network
-        :param master_metrics: Keras metrics used for master network
-        :param custom_objects: Keras custom objects
         :param parameter_server_mode: String, either `http` or `socket`
+        :param num_workers: int, number of workers used for training (defaults to None)
+        :param elephas_optimizer: Elephas optimizer
+        :param custom_objects: Keras custom objects
         """
 
-        self._master_network = master_network
+        self._master_network = model
+        if not hasattr(model, "loss"):
+            raise Exception("Compile your Keras model before initializing an Elephas model with it")
+        metrics = model.metrics
+        loss = model.loss
+        optimizer = serialize_optimizer(model.optimizer)
+
         if custom_objects is None:
             custom_objects = {}
-        if master_metrics is None:
-            master_metrics = ["accuracy"]
-        if optimizer is None:
+        if metrics is None:
+            metrics = ["accuracy"]
+        if elephas_optimizer is None:
             self.optimizer = SGD()
         else:
-            self.optimizer = optimizer
+            self.optimizer = elephas_optimizer
         self.mode = mode
         self.frequency = frequency
         self.num_workers = num_workers
-        self.weights = master_network.get_weights()
+        self.weights = self._master_network.get_weights()
         self.pickled_weights = None
-        self.master_optimizer = master_optimizer
-        self.master_loss = master_loss
-        self.master_metrics = master_metrics
+        self.master_optimizer = optimizer
+        self.master_loss = loss
+        self.master_metrics = metrics
         self.custom_objects = custom_objects
         self.parameter_server_mode = parameter_server_mode
 
@@ -167,29 +170,23 @@ class SparkModel(object):
 
 class SparkMLlibModel(SparkModel):
 
-    def __init__(self, master_network, optimizer=None, mode='asynchronous', frequency='epoch', num_workers=4,
-                 master_optimizer="adam", master_loss="categorical_crossentropy",
-                 master_metrics=None, custom_objects=None, parameter_server_mode='http',
-                 *args, **kwargs):
+    def __init__(self, model, mode='asynchronous', frequency='epoch', parameter_server_mode='http',
+                 num_workers=4, elephas_optimizer=None, custom_objects=None, *args, **kwargs):
         """SparkMLlibModel
 
         The Spark MLlib model takes RDDs of LabeledPoints for training.
 
-        :param master_network: Keras model (not compiled)
-        :param optimizer: Elephas optimizer
+        :param model: Compiled Keras model
         :param mode: String, choose from `asynchronous`, `synchronous` and `hogwild`
         :param frequency: String, either `epoch` or `batch`
+        :param parameter_server_mode: String, either `http` or `socket`
         :param num_workers: int, number of workers used for training (defaults to None)
-        :param master_optimizer: Keras optimizer for master network
-        :param master_loss: Keras loss function for master network
-        :param master_metrics: Keras metrics used for master network
+        :param elephas_optimizer: Elephas optimizer
         :param custom_objects: Keras custom objects
-        :param parameter_server_mode: String, either `http` or `socket
         """
-        SparkModel.__init__(self, master_network=master_network, optimizer=optimizer, mode=mode, frequency=frequency,
-                            num_workers=num_workers, master_optimizer=master_optimizer, master_loss=master_loss,
-                            master_metrics=master_metrics, custom_objects=custom_objects,
-                            parameter_server_mode=parameter_server_mode, *args, **kwargs)
+        SparkModel.__init__(self, model=model, mode=mode, frequency=frequency,
+                            parameter_server_mode=parameter_server_mode, num_workers=num_workers,
+                            elephas_optimizer=elephas_optimizer, custom_objects=custom_objects, *args, **kwargs)
 
     def fit(self, labeled_points, epochs=10, batch_size=32, verbose=0, validation_split=0.1,
               categorical=False, nb_classes=None):

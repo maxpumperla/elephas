@@ -2,6 +2,7 @@ import numpy as np
 from itertools import tee
 from keras.utils.generic_utils import slice_arrays
 from keras.models import model_from_yaml
+from keras.optimizers import get as get_optimizer
 
 from .utils import subtract_params
 from .parameter import SocketClient, HttpClient
@@ -15,7 +16,7 @@ class SparkWorker(object):
         self.yaml = yaml
         self.parameters = parameters
         self.train_config = train_config
-        self.master_optimizer = "sgd"  # TODO
+        self.master_optimizer = master_optimizer
         self.master_loss = master_loss
         self.master_metrics = master_metrics
         self.custom_objects = custom_objects
@@ -24,8 +25,9 @@ class SparkWorker(object):
     def train(self, data_iterator):
         """Train a keras model on a worker
         """
+        optimizer = get_optimizer(self.master_optimizer)
         self.model = model_from_yaml(self.yaml, self.custom_objects)
-        self.model.compile(optimizer=self.master_optimizer, loss=self.master_loss, metrics=self.master_metrics)
+        self.model.compile(optimizer=optimizer, loss=self.master_loss, metrics=self.master_metrics)
         self.model.set_weights(self.parameters.value)
 
         feature_iterator, label_iterator = tee(data_iterator, 2)
@@ -57,7 +59,7 @@ class AsynchronousSparkWorker(object):
 
         self.train_config = train_config
         self.frequency = frequency
-        self.master_optimizer = "sgd"  # TODO master_optimizer
+        self.master_optimizer = master_optimizer
         self.master_loss = master_loss
         self.master_metrics = master_metrics
         self.yaml = yaml
@@ -76,8 +78,9 @@ class AsynchronousSparkWorker(object):
         if x_train.size == 0:
             return
 
+        optimizer = get_optimizer(self.master_optimizer)
         self.model = model_from_yaml(self.yaml, self.custom_objects)
-        self.model.compile(optimizer=self.master_optimizer, loss=self.master_loss, metrics=self.master_metrics)
+        self.model.compile(optimizer=optimizer, loss=self.master_loss, metrics=self.master_metrics)
         self.model.set_weights(self.parameters.value)
 
         nb_epoch = self.train_config['nb_epoch']

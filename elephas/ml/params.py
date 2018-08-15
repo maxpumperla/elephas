@@ -19,19 +19,22 @@ class HasKerasModelConfig(Params):
         return self.getOrDefault(self.keras_model_config)
 
 
-class HasOptimizerConfig(Params):
+class HasElephasOptimizerConfig(Params):
     """Parameter mixin for Elephas optimizer config
     """
     def __init__(self):
-        super(HasOptimizerConfig, self).__init__()
-        self.optimizer_config = Param(self, "optimizer_config", "Serialized Elephas optimizer properties")
+        super(HasElephasOptimizerConfig, self).__init__()
+        self.elephas_optimizer_config = Param(self, "elephas_optimizer_config",
+                                              "Serialized Elephas optimizer properties")
+        self._setDefault(elephas_optimizer_config=None)
 
-    def set_optimizer_config(self, optimizer_config):
-        self._paramMap[self.optimizer_config] = optimizer_config
+
+    def set_elephas_optimizer_config(self, elephas_optimizer_config):
+        self._paramMap[self.elephas_optimizer_config] = elephas_optimizer_config
         return self
 
-    def get_optimizer_config(self):
-        return self.getOrDefault(self.optimizer_config)
+    def get_elephas_optimizer_config(self):
+        return self.getOrDefault(self.elephas_optimizer_config)
 
 
 class HasMode(Params):
@@ -180,3 +183,49 @@ class HasNumberOfWorkers(Params):
 
     def get_num_workers(self):
         return self.getOrDefault(self.num_workers)
+
+
+class HasKerasOptimizerConfig(Params):
+    """Parameter mixin for Keras optimizer config
+    """
+    def __init__(self):
+        super(HasKerasOptimizerConfig, self).__init__()
+        self.optimizer_config = Param(self, "optimizer_config", "Serialized Keras optimizer properties")
+        self._setDefault(optimizer_config=None)
+
+    def set_optimizer_config(self, optimizer_config):
+        self._paramMap[self.optimizer_config] = optimizer_config
+        return self
+
+    def get_optimizer_config(self):
+        return self.getOrDefault(self.optimizer_config)
+
+
+class HasMetrics(Params):
+    """Parameter mixin for Keras metrics
+    """
+    def __init__(self):
+        super(HasMetrics, self).__init__()
+        self.metrics = Param(self, "metrics", "Keras metrics")
+
+    def set_metrics(self, metrics):
+        self._paramMap[self.metrics] = metrics
+        return self
+
+    def get_metrics(self):
+        return self.getOrDefault(self.metrics)
+
+
+class HasLoss(Params):
+    """Parameter mixin for Keras metrics
+    """
+    def __init__(self):
+        super(HasLoss, self).__init__()
+        self.loss = Param(self, "loss", "Keras loss")
+
+    def set_loss(self, loss):
+        self._paramMap[self.loss] = loss
+        return self
+
+    def get_loss(self):
+        return self.getOrDefault(self.loss)
