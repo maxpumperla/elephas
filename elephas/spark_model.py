@@ -19,7 +19,7 @@ from .parameter import HttpClient, SocketClient
 class SparkModel(object):
 
     def __init__(self, model, mode='asynchronous', frequency='epoch',  parameter_server_mode='http', num_workers=None,
-                 elephas_optimizer=None, custom_objects=None, *args, **kwargs):
+                 elephas_optimizer=None, custom_objects=None, batch_size=32, *args, **kwargs):
         """SparkModel
 
         Base class for distributed training on RDDs. Spark model takes a Keras
@@ -60,6 +60,7 @@ class SparkModel(object):
         self.master_metrics = metrics
         self.custom_objects = custom_objects
         self.parameter_server_mode = parameter_server_mode
+        self.batch_size = batch_size
 
         self.serialized_model = model_to_dict(self.master_network)
         if self.parameter_server_mode == 'http':
@@ -84,7 +85,8 @@ class SparkModel(object):
                 'elephas_optimizer': self.optimizer.get_config(),
                 'mode': self.mode,
                 'frequency': self.frequency,
-                'num_workers': self.num_workers}
+                'num_workers': self.num_workers,
+                'batch_size': self.batch_size}
 
     def save(self, file_name):
         model = self.master_network
@@ -200,7 +202,7 @@ def load_spark_model(file_name):
 class SparkMLlibModel(SparkModel):
 
     def __init__(self, model, mode='asynchronous', frequency='epoch', parameter_server_mode='http',
-                 num_workers=4, elephas_optimizer=None, custom_objects=None, *args, **kwargs):
+                 num_workers=4, elephas_optimizer=None, custom_objects=None, batch_size=32, *args, **kwargs):
         """SparkMLlibModel
 
         The Spark MLlib model takes RDDs of LabeledPoints for training.
@@ -215,7 +217,8 @@ class SparkMLlibModel(SparkModel):
         """
         SparkModel.__init__(self, model=model, mode=mode, frequency=frequency,
                             parameter_server_mode=parameter_server_mode, num_workers=num_workers,
-                            elephas_optimizer=elephas_optimizer, custom_objects=custom_objects, *args, **kwargs)
+                            elephas_optimizer=elephas_optimizer, custom_objects=custom_objects,
+                            batch_size=batch_size, *args, **kwargs)
 
     def fit(self, labeled_points, epochs=10, batch_size=32, verbose=0, validation_split=0.1,
               categorical=False, nb_classes=None):
