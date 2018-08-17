@@ -49,12 +49,6 @@ model.add(Activation('softmax'))
 model.compile(optimizer="sgd", loss="categorical_crossentropy", metrics=["acc"])
 
 
-def test_serialization():
-    spark_model = SparkModel(model, frequency='epoch', mode='synchronous', num_workers=2)
-    spark_model.save("test.h5")
-    recov = load_spark_model("test.h5")
-
-
 def test_spark_model_end_to_end(spark_context):
     rdd = to_simple_rdd(spark_context, x_train, y_train)
 
