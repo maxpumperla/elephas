@@ -1,4 +1,11 @@
-# Elephas: Distributed Deep Learning with Keras & Spark [![Build Status](https://travis-ci.org/maxpumperla/elephas.svg?branch=master)](https://travis-ci.org/maxpumperla/elephas)
+# Elephas: Distributed Deep Learning with Keras & Spark 
+
+![Elephas](elephas-logo.png)
+
+## 
+
+[![Build Status](https://travis-ci.org/maxpumperla/elephas.svg?branch=master)](https://travis-ci.org/maxpumperla/elephas)
+[![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/maxpumperla/elephas/blob/master/LICENSE)
 
 Elephas is an extension of [Keras](http://keras.io), which allows you to run distributed deep learning models at 
 scale with [Spark](http://spark.apache.org). Elephas currently supports a number of 
