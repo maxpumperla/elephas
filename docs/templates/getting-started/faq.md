@@ -1,1 +1,1 @@
-# Elephas FAQ: Frequently Asked Keras Questions
+# Elephas FAQ: Frequently Asked Questions
