@@ -1,6 +1,6 @@
 # Elephas: Distributed Deep Learning with Keras & Spark 
 
-![Elephas](elephas-logo.png)
+![Elephas](https://github.com/maxpumperla/elephas/blob/master/elephas-logo.png)
 
 ## 
 
@@ -18,7 +18,7 @@ applications, including:
 
 Schematically, elephas works as follows.
 
-![Elephas](elephas.gif)
+![Elephas](https://github.com/maxpumperla/elephas/blob/master/elephas.gif)
 
 Table of content:
 * [Elephas: Distributed Deep Learning with Keras & Spark](#elephas-distributed-deep-learning-with-keras-&-spark-)
