@@ -4,9 +4,13 @@ from pyspark.mllib.regression import LabeledPoint
 import numpy as np
 
 from ..mllib.adapter import to_vector, from_vector
-from elephas.java import java_classes
+try:
+    from elephas.java import java_classes
+    from elephas.java.ndarray import ndarray
+except:
+    print("WARNING")
+
 from six.moves import zip
-from elephas.java.ndarray import ndarray
 
 
 def to_java_rdd(jsc, features, labels, batch_size):

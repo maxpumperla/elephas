@@ -61,6 +61,7 @@ class SparkModel(object):
         self.custom_objects = custom_objects
         self.parameter_server_mode = parameter_server_mode
         self.batch_size = batch_size
+        self.kwargs = kwargs
 
         self.serialized_model = model_to_dict(self.master_network)
         if self.parameter_server_mode == 'http':
@@ -81,12 +82,16 @@ class SparkModel(object):
                 'validation_split': validation_split}
 
     def get_config(self):
-        return {'parameter_server_mode': self.parameter_server_mode,
-                'elephas_optimizer': self.optimizer.get_config(),
-                'mode': self.mode,
-                'frequency': self.frequency,
-                'num_workers': self.num_workers,
-                'batch_size': self.batch_size}
+        base_config = {
+            'parameter_server_mode': self.parameter_server_mode,
+            'elephas_optimizer': self.optimizer.get_config(),
+            'mode': self.mode,
+            'frequency': self.frequency,
+            'num_workers': self.num_workers,
+            'batch_size': self.batch_size}
+        config = base_config.copy()
+        config.update(self.kwargs)
+        return config
 
     def save(self, file_name):
         model = self.master_network
