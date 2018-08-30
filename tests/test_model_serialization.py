@@ -66,5 +66,5 @@ def test_model_serialization():
                       loss='categorical_crossentropy',
                       metrics=['accuracy'])
 
-    spark_model = SparkModel(model, frequency='epoch', mode='synchronous')
+    spark_model = SparkModel(model, frequency='epoch', mode='synchronous', foo="bar")
     spark_model.save("elephas_model.h5")
