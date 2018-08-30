@@ -1,12 +1,15 @@
 import ctypes
 import numpy as np
-from elephas.java import java_classes
+try:
+    from elephas.java import java_classes
+except:
+    pass
 
 
 def get_context_dtype():
-    '''
+    """
     Returns the nd4j dtype
-    '''
+    """
     dtype = java_classes.DataTypeUtil.getDtypeFromContext()
     return java_classes.DataTypeUtil.getDTypeForName(dtype)
 

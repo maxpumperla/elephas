@@ -14,7 +14,10 @@ from .optimizers import SGD
 from .worker import AsynchronousSparkWorker, SparkWorker
 from .parameter import HttpServer, SocketServer
 from .parameter import HttpClient, SocketClient
-
+try:
+    from elephas.java import java_classes, adapter
+except:
+    pass
 
 class SparkModel(object):
 
@@ -64,6 +67,7 @@ class SparkModel(object):
         self.kwargs = kwargs
 
         self.serialized_model = model_to_dict(self.master_network)
+        # TODO only set this for async/hogwild mode
         if self.parameter_server_mode == 'http':
             self.parameter_server = HttpServer(self.serialized_model, self.optimizer, self.mode)
             self.client = HttpClient()
@@ -242,3 +246,33 @@ class SparkMLlibModel(SparkModel):
             return to_vector(self.master_network.predict(from_vector(mllib_data)))
         else:
             raise ValueError('Provide either an MLLib matrix or vector, got {}'.format(mllib_data.__name__))
+
+
+class DL4JSparkModel(SparkModel):
+    def __init__(self, java_spark_context, model, parameter_server='sharing', batch_size=32, *args, **kwargs):
+        """ParameterAveragingDL4JModel
+
+        :param java_spark_context JavaSparkContext (through pyjnius)
+        :param model: Compiled Keras model
+        :param parameter_server: String, `average` vs `sharing`
+        :param num_workers: int, number of workers used for training (defaults to None)
+        """
+        SparkModel.__init__(self, model=model, batch_size=batch_size, parameter_server=parameter_server,
+                            *args, **kwargs)
+
+        self.save("temp.h5")
+        emi = java_classes.ElephasModelImport
+        file = java_classes.File("temp.h5")
+
+        self.java_spark_model = emi.importElephasSequentialModelAndWeights(java_spark_context, file.absolutePath)
+
+    def fit_rdd(self, data_set_rdd, epochs):
+        for _ in range(epochs):
+            self.java_spark_model.fit(data_set_rdd)
+
+    def get_keras_model(self):
+        model = self.master_network
+        java_model = self.java_spark_model.getNetwork()
+        weights = adapter.retrieve_keras_weights(java_model)
+        model.set_weights(weights)
+        return model

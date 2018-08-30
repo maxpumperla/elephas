@@ -1,6 +1,3 @@
-
-
-
 from .java_classes import *
 import numpy as np
 import ctypes

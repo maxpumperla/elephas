@@ -4,6 +4,7 @@ from jnius import autoclass
 File = autoclass('java.io.File')
 ClassLoader = autoclass('java.lang.ClassLoader')
 ArrayList = autoclass('java.util.ArrayList')
+Arrays = autoclass('java.util.Arrays')
 String = autoclass('java.lang.String')
 
 System = autoclass('java.lang.System')
