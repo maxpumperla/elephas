@@ -1,5 +1,5 @@
 from elephas.java import java_classes
-from elephas.spark_model import DL4JSparkModel
+from elephas.spark_model import JavaAveragingModel
 from elephas.utils import rdd_utils
 import keras
 from keras.utils import np_utils
@@ -24,7 +24,7 @@ def main():
     model.compile(loss='categorical_crossentropy', optimizer='sgd', metrics=['accuracy'])
 
     # Define DL4J Elephas model
-    spark_model = DL4JSparkModel(java_spark_context=jsc, model=model, parameter_server='sharing', batch_size=32)
+    spark_model = JavaAveragingModel(java_spark_context=jsc, model=model, num_workers=4, batch_size=32)
 
     # Load data and build DL4J DataSet RDD under the hood
     (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
@@ -36,8 +36,8 @@ def main():
     # Convert class vectors to binary class matrices
     y_train = np_utils.to_categorical(y_train, 10)
     y_test = np_utils.to_categorical(y_test, 10)
-    y_train = y_train.astype("int64")
-    y_test = y_test.astype("int64")
+    y_train = y_train.astype("float64")
+    y_test = y_test.astype("float64")
     x_train /= 255
     x_test /= 255
     java_rdd = rdd_utils.to_java_rdd(jsc, x_train, y_train, 32)
