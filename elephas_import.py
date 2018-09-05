@@ -3,12 +3,19 @@ from elephas.spark_model import DL4JSparkModel
 from elephas.utils import rdd_utils
 import keras
 from keras.utils import np_utils
+from pyspark import SparkContext, SparkConf
 
 
 def main():
+    # test pyspark contex and delete again
+    # pyconf = SparkConf().setMaster('local[*]').setAppName("elephas_dl4j_pypark")
+    # sc = SparkContext(pyconf)
+    # del sc
+
     # Set Java Spark context
     conf = java_classes.SparkConf().setMaster('local[*]').setAppName("elephas_dl4j")
     jsc = java_classes.JavaSparkContext(conf)
+
 
     # Define Keras model
     model = keras.models.Sequential()
@@ -29,8 +36,8 @@ def main():
     # Convert class vectors to binary class matrices
     y_train = np_utils.to_categorical(y_train, 10)
     y_test = np_utils.to_categorical(y_test, 10)
-    y_train = y_train.astype("float64")
-    y_test = y_test.astype("float64")
+    y_train = y_train.astype("int64")
+    y_test = y_test.astype("int64")
     x_train /= 255
     x_test /= 255
     java_rdd = rdd_utils.to_java_rdd(jsc, x_train, y_train, 32)
