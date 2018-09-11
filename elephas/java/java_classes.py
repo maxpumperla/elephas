@@ -1,4 +1,13 @@
+import warnings
+import pydl4j
+import os
+
+pydl4j.install_docker_jars()
+pydl4j.add_classpath(os.getcwd())
+
+# -------------JVM starts here-------------
 from jnius import autoclass
+
 
 # Java
 File = autoclass('java.io.File')
@@ -32,8 +41,6 @@ Shape = autoclass('org.nd4j.linalg.api.shape.Shape')
 BinarySerde = autoclass('org.nd4j.serde.binary.BinarySerde')
 DataTypeUtil = autoclass('org.nd4j.linalg.api.buffer.util.DataTypeUtil')
 NativeOpsHolder = autoclass('org.nd4j.nativeblas.NativeOpsHolder')
-
-# DataVec
 DataSet = autoclass('org.nd4j.linalg.dataset.DataSet')
 
 
