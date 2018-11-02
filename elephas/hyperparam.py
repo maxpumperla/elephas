@@ -30,10 +30,13 @@ class HyperParamModel(object):
 
         return trials_list
 
-    def minimize(self, model, data, max_evals):
+    def minimize(self, model, data, max_evals, notebook_name=None):
         global best_model_yaml, best_model_weights
 
-        trials_list = self.compute_trials(model, data, max_evals)
+        if notebook_name is None:
+            trials_list = self.compute_trials(model, data, max_evals)
+        else:
+            trails_list = self.compute_trails(model, data, max_evals, notebook_name)
 
         best_val = 1e7
         for trials in trials_list:
