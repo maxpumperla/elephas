@@ -10,7 +10,7 @@ from ..utils.sockets import receive, send
 from ..utils.serialization import dict_to_model
 # from multiprocessing import Lock
 from ..utils.rwlock import RWLock as Lock
-
+from ..utils.notebook_utils import is_running_in_notebook
 
 class BaseParameterServer(object):
     """BaseParameterServer
@@ -66,9 +66,15 @@ class HttpServer(BaseParameterServer):
         self.optimizer = optimizer
 
         self.port = port
-        self.debug = debug
-        self.threaded = threaded
-        self.use_reloader = use_reloader
+
+        if is_running_in_notebook():
+            self.threaded = False
+            self.use_reloader = False
+            self.debug = False
+        else:
+            self.debug = debug
+            self.threaded = threaded
+            self.use_reloader = use_reloader
 
         self.lock = Lock()
         self.pickled_weights = None
