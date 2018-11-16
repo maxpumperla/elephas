@@ -1,21 +1,14 @@
 from elephas.java import java_classes
-from elephas.spark_model import JavaAveragingModel
+from elephas.dl4j import ParameterAveragingModel
 from elephas.utils import rdd_utils
 import keras
 from keras.utils import np_utils
-from pyspark import SparkContext, SparkConf
 
 
 def main():
-    # test pyspark contex and delete again
-    # pyconf = SparkConf().setMaster('local[*]').setAppName("elephas_dl4j_pypark")
-    # sc = SparkContext(pyconf)
-    # del sc
-
     # Set Java Spark context
     conf = java_classes.SparkConf().setMaster('local[*]').setAppName("elephas_dl4j")
     jsc = java_classes.JavaSparkContext(conf)
-
 
     # Define Keras model
     model = keras.models.Sequential()
@@ -24,7 +17,7 @@ def main():
     model.compile(loss='categorical_crossentropy', optimizer='sgd', metrics=['accuracy'])
 
     # Define DL4J Elephas model
-    spark_model = JavaAveragingModel(java_spark_context=jsc, model=model, num_workers=4, batch_size=32)
+    spark_model = ParameterAveragingModel(java_spark_context=jsc, model=model, num_workers=4, batch_size=32)
 
     # Load data and build DL4J DataSet RDD under the hood
     (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
