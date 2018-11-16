@@ -61,8 +61,10 @@ class SparkModel(object):
         self.custom_objects = custom_objects
         self.parameter_server_mode = parameter_server_mode
         self.batch_size = batch_size
+        self.kwargs = kwargs
 
         self.serialized_model = model_to_dict(self.master_network)
+        # TODO only set this for async/hogwild mode
         if self.parameter_server_mode == 'http':
             self.parameter_server = HttpServer(self.serialized_model, self.optimizer, self.mode)
             self.client = HttpClient()
@@ -81,12 +83,16 @@ class SparkModel(object):
                 'validation_split': validation_split}
 
     def get_config(self):
-        return {'parameter_server_mode': self.parameter_server_mode,
-                'elephas_optimizer': self.optimizer.get_config(),
-                'mode': self.mode,
-                'frequency': self.frequency,
-                'num_workers': self.num_workers,
-                'batch_size': self.batch_size}
+        base_config = {
+            'parameter_server_mode': self.parameter_server_mode,
+            'elephas_optimizer': self.optimizer.get_config(),
+            'mode': self.mode,
+            'frequency': self.frequency,
+            'num_workers': self.num_workers,
+            'batch_size': self.batch_size}
+        config = base_config.copy()
+        config.update(self.kwargs)
+        return config
 
     def save(self, file_name):
         model = self.master_network
@@ -237,3 +243,4 @@ class SparkMLlibModel(SparkModel):
             return to_vector(self.master_network.predict(from_vector(mllib_data)))
         else:
             raise ValueError('Provide either an MLLib matrix or vector, got {}'.format(mllib_data.__name__))
+

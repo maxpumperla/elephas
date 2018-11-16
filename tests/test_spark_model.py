@@ -7,7 +7,7 @@ from keras.models import Sequential
 from keras.layers.core import Dense, Dropout, Activation
 from keras.utils import np_utils
 
-from elephas.spark_model import SparkModel, load_spark_model
+from elephas.spark_model import SparkModel
 from elephas.utils.rdd_utils import to_simple_rdd
 
 
@@ -70,7 +70,7 @@ def test_spark_model_end_to_end(spark_context):
     score = spark_model.master_network.evaluate(x_test, y_test, verbose=2)
     print('Test accuracy:', score[1])
 
-    # hogwild epoch
+    # hog wild epoch
     spark_model = SparkModel(model, frequency='epoch', mode='hogwild')
     spark_model.fit(rdd, epochs=epochs, batch_size=batch_size, verbose=2, validation_split=0.1)
     score = spark_model.master_network.evaluate(x_test, y_test, verbose=2)

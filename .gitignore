@@ -72,6 +72,9 @@ test.csv
 test.h5
 elephas_sequential.h5
 elephas_model.h5
+java_param_averaging_model.h5
+java_param_sharing_model.h5
+temp.h5
 
 docs/sources
 docs/site

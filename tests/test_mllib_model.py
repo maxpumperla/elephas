@@ -49,7 +49,7 @@ model.compile(rms, 'categorical_crossentropy', ['acc'])
 def test_serialization():
     spark_model = SparkMLlibModel(model, frequency='epoch', mode='synchronous', num_workers=2)
     spark_model.save("test.h5")
-    recov = load_spark_model("test.h5")
+    load_spark_model("test.h5")
 
 
 def test_mllib_model(spark_context):
