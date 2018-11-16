@@ -7,7 +7,7 @@ from ..mllib.adapter import to_vector, from_vector
 try:
     from elephas.java import java_classes
     from elephas.java.ndarray import ndarray
-except:
+except Exception:
     print("WARNING")
 
 from six.moves import zip
@@ -25,8 +25,8 @@ def to_java_rdd(jsc, features, labels, batch_size):
     data_sets = java_classes.ArrayList()
     num_batches = int(len(features) / batch_size)
     for i in range(num_batches):
-        xi = ndarray(features[:batch_size])
-        yi = ndarray(labels[:batch_size])
+        xi = ndarray(features[:batch_size].copy())
+        yi = ndarray(labels[:batch_size].copy())
         data_set = java_classes.DataSet(xi.array, yi.array)
         data_sets.add(data_set)
         features = features[batch_size:]
