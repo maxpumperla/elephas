@@ -1,8 +1,7 @@
-import warnings
 import pydl4j
 import os
 
-pydl4j.install_docker_jars()
+pydl4j.validate_jars()
 pydl4j.add_classpath(os.getcwd())
 
 # -------------JVM starts here-------------

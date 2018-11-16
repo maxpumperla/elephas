@@ -7,8 +7,7 @@ except:
 
 
 def get_context_dtype():
-    """
-    Returns the nd4j dtype
+    """Returns the nd4j dtype
     """
     dtype = java_classes.DataTypeUtil.getDtypeFromContext()
     return java_classes.DataTypeUtil.getDTypeForName(dtype)

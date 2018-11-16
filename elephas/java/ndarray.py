@@ -10,31 +10,31 @@ native_ops = NativeOpsHolder.getInstance().getDeviceNativeOps()
 # DATA TYPE MANAGEMENT
 
 def set_context_dtype(dtype):
-    '''
+    """
     Sets the dtype for nd4j
     # Arguments
         dtype: 'float' or 'double'
-    '''
+    """
     dtype = DataTypeUtil.getDtypeFromContext(dtype)
     DataTypeUtil.setDTypeForContext(dtype)
 
 
 def get_context_dtype():
-    '''
+    """
     Returns the nd4j dtype
-    '''
+    """
     dtype = DataTypeUtil.getDtypeFromContext()
     return DataTypeUtil.getDTypeForName(dtype)
 
 
 def get_nd4j_dtype(np_dtype):
-    '''
+    """
     Gets the equivalent nd4j data type
     for a given numpy data type.
     # Arguments
         np_dtype: Numpy data type. One of
             ['float64', 'float32', 'float16']
-    '''
+    """
     if type(np_dtype) == type:
         np_dtype = np_dtype.__name__
     elif type(np_dtype) == np.dtype:
@@ -51,13 +51,13 @@ def get_nd4j_dtype(np_dtype):
 
 
 def get_np_dtype(nd4j_dtype):
-    '''
+    """
     Gets the equivalent numpy data type
     for a given nd4j data type.
     # Arguments:
         nd4j_dtype : Nd4j data type. One of
         ['double', 'float', 'half']
-    '''
+    """
     mapping = {
         'double': np.float64,
         'float': np.float32,
@@ -76,9 +76,9 @@ _refs = []
 
 
 def _from_numpy(np_array):
-    '''
+    """
     Convert numpy array to nd4j array
-    '''
+    """
 
     # Convert the numpy array to nd4j context dtype
     required_dtype = get_np_dtype(get_context_dtype())
@@ -133,9 +133,9 @@ def _from_numpy(np_array):
 
 
 def _to_numpy(nd4j_array):
-    '''
+    """
     Convert nd4j array to numpy array
-    '''
+    """
     buff = nd4j_array.data()
     address = buff.pointer().address()
     dtype = get_context_dtype()
