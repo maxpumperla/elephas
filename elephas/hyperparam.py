@@ -20,8 +20,8 @@ class HyperParamModel(object):
         self.spark_context = sc
         self.num_workers = num_workers
 
-    def compute_trials(self, model, data, max_evals):
-        model_string = get_hyperopt_model_string(model=model, data=data, functions=None, notebook_name=None,
+    def compute_trials(self, model, data, max_evals, notebook_name):
+        model_string = get_hyperopt_model_string(model=model, data=data, functions=None, notebook_name=notebook_name,
                                                  verbose=False, stack=3)
         hyperas_worker = HyperasWorker(model_string, max_evals)
         dummy_rdd = self.spark_context.parallelize([i for i in range(1, 1000)])
@@ -33,10 +33,7 @@ class HyperParamModel(object):
     def minimize(self, model, data, max_evals, notebook_name=None):
         global best_model_yaml, best_model_weights
 
-        if notebook_name is None:
-            trials_list = self.compute_trials(model, data, max_evals)
-        else:
-            trials_list = self.compute_trials(model, data, max_evals, notebook_name)
+        trials_list = self.compute_trials(model, data, max_evals, notebook_name)
 
         best_val = 1e7
         for trials in trials_list:
