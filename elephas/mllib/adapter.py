@@ -23,7 +23,7 @@ def to_matrix(np_array):
 def from_vector(vector):
     """Convert MLlib Vector to numpy array
     """
-    return vector.array
+    return vector.toArray()
 
 
 def to_vector(np_array):
