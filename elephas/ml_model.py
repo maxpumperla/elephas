@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function
 
 import numpy as np
+import copy
 import h5py
 import json
 
@@ -150,7 +151,7 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol):
         """
         output_col = self.getOutputCol()
         label_col = self.getLabelCol()
-        new_schema = df.schema
+        new_schema = copy.deepcopy(df.schema)
         new_schema.add(StructField(output_col, StringType(), True))
 
         rdd = df.rdd.coalesce(1)
