@@ -12,6 +12,7 @@ from ..utils.serialization import dict_to_model
 from ..utils.rwlock import RWLock as Lock
 from ..utils.notebook_utils import is_running_in_notebook
 
+
 class BaseParameterServer(object):
     """BaseParameterServer
 
@@ -125,9 +126,10 @@ class HttpServer(BaseParameterServer):
             if not self.master_network.built:
                 self.master_network.build()
 
-            base_constraint = lambda a: a
+            def base_constraint(a): return a
             constraints = [base_constraint for _ in self.weights]
-            self.weights = self.optimizer.get_updates(self.weights, constraints, delta)
+            self.weights = self.optimizer.get_updates(
+                self.weights, constraints, delta)
             if self.mode == 'asynchronous':
                 self.lock.release()
             return 'Update done'

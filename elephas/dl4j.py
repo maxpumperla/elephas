@@ -26,7 +26,8 @@ class ParameterAveragingModel(SparkModel):
         self.save(save_file)
         model_file = java_classes.File(save_file)
         keras_model_type = model.__class__.__name__
-        self.java_spark_model = dl4j_import(java_spark_context, model_file, keras_model_type)
+        self.java_spark_model = dl4j_import(
+            java_spark_context, model_file, keras_model_type)
 
     def fit_rdd(self, data_set_rdd, epochs):
         for _ in range(epochs):
@@ -42,7 +43,7 @@ class ParameterAveragingModel(SparkModel):
 
 class ParameterSharingModel(SparkModel):
     def __init__(self, java_spark_context, model, num_workers, batch_size,
-                 shake_frequency=0, min_threshold=1e-5, update_threshold=1e-3 , workers_per_node=-1,
+                 shake_frequency=0, min_threshold=1e-5, update_threshold=1e-3, workers_per_node=-1,
                  num_batches_prefetch=0, step_delay=50, step_trigger=0.05, threshold_step=1e-5,
                  collect_stats=False, save_file='temp.h5', *args, **kwargs):
         """ParameterSharingModel
@@ -73,7 +74,8 @@ class ParameterSharingModel(SparkModel):
         self.save(save_file)
         model_file = java_classes.File(save_file)
         keras_model_type = model.__class__.__name__
-        self.java_spark_model = dl4j_import(java_spark_context, model_file, keras_model_type)
+        self.java_spark_model = dl4j_import(
+            java_spark_context, model_file, keras_model_type)
 
     def fit_rdd(self, data_set_rdd, epochs):
         for _ in range(epochs):
@@ -101,4 +103,5 @@ def dl4j_import(jsc, model_file, keras_model_type):
         except:
             print("Couldn't load Keras model into DL4J")
     else:
-        raise Exception("Keras model not understood, got: {}".format(keras_model_type))
+        raise Exception(
+            "Keras model not understood, got: {}".format(keras_model_type))

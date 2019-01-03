@@ -44,6 +44,7 @@ class HttpClient(BaseParameterClient):
     namely HttpServer. The HTTP server provides two endpoints, `/parameters` to
     get parameters and `/update` to update the server's parameters.
     """
+
     def __init__(self, port=4000):
 
         self.master_url = determine_master(port=port)
@@ -68,6 +69,7 @@ class SocketClient(BaseParameterClient):
     The socket server listens to two types of events. Those with a `g` prefix
     indicate a get-request, those with a `u` indicate a parameter update.
     """
+
     def __init__(self, host='0.0.0.0', port=4000):
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

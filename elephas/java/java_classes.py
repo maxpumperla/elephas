@@ -44,5 +44,7 @@ DataSet = autoclass('org.nd4j.linalg.dataset.DataSet')
 
 
 # Import
-KerasModelImport = autoclass('org.deeplearning4j.nn.modelimport.keras.KerasModelImport')
-ElephasModelImport = autoclass('org.deeplearning4j.spark.parameterserver.modelimport.elephas.ElephasModelImport')
+KerasModelImport = autoclass(
+    'org.deeplearning4j.nn.modelimport.keras.KerasModelImport')
+ElephasModelImport = autoclass(
+    'org.deeplearning4j.spark.parameterserver.modelimport.elephas.ElephasModelImport')

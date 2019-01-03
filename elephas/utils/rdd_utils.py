@@ -76,7 +76,8 @@ def from_labeled_point(rdd, categorical=False, nb_classes=None):
     :param nb_classes: optional int, indicating the number of class labels
     :return: pair of numpy arrays, features and labels
     """
-    features = np.asarray(rdd.map(lambda lp: from_vector(lp.features)).collect())
+    features = np.asarray(
+        rdd.map(lambda lp: from_vector(lp.features)).collect())
     labels = np.asarray(rdd.map(lambda lp: lp.label).collect(), dtype='int32')
     if categorical:
         if not nb_classes:
@@ -110,9 +111,11 @@ def lp_to_simple_rdd(lp_rdd, categorical=False, nb_classes=None):
     """
     if categorical:
         if not nb_classes:
-            labels = np.asarray(lp_rdd.map(lambda lp: lp.label).collect(), dtype='int32')
+            labels = np.asarray(lp_rdd.map(
+                lambda lp: lp.label).collect(), dtype='int32')
             nb_classes = np.max(labels) + 1
-        rdd = lp_rdd.map(lambda lp: (from_vector(lp.features), encode_label(lp.label, nb_classes)))
+        rdd = lp_rdd.map(lambda lp: (from_vector(lp.features),
+                                     encode_label(lp.label, nb_classes)))
     else:
         rdd = lp_rdd.map(lambda lp: (from_vector(lp.features), lp.label))
     return rdd
