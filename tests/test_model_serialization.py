@@ -23,7 +23,8 @@ def test_sequential_serialization():
     seq_model.add(Dense(10))
     seq_model.add(Activation('softmax'))
 
-    seq_model.compile(optimizer="sgd", loss="categorical_crossentropy", metrics=["acc"])
+    seq_model.compile(
+        optimizer="sgd", loss="categorical_crossentropy", metrics=["acc"])
     spark_model = SparkModel(seq_model, frequency='epoch', mode='synchronous')
     spark_model.save("elephas_sequential.h5")
 
@@ -44,7 +45,8 @@ def test_model_serialization():
                   loss='categorical_crossentropy',
                   metrics=['accuracy'])
 
-    spark_model = SparkModel(model, frequency='epoch', mode='synchronous', foo="bar")
+    spark_model = SparkModel(model, frequency='epoch',
+                             mode='synchronous', foo="bar")
     spark_model.save("elephas_model.h5")
 
 

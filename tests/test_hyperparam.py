@@ -40,7 +40,8 @@ def model(x_train, y_train, x_test, y_test):
     keras_model.add(Activation('softmax'))
 
     rms = RMSprop()
-    keras_model.compile(loss='categorical_crossentropy', optimizer=rms, metrics=['acc'])
+    keras_model.compile(loss='categorical_crossentropy',
+                        optimizer=rms, metrics=['acc'])
 
     keras_model.fit(x_train, y_train,
                     batch_size={{choice([64, 128])}},
