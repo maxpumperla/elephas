@@ -3,7 +3,7 @@ dist: trusty
 language: python
 python:
   - "2.7"
-  #- "3.4" # Note that hyperopt currently seems to have issues with 3.4
+  - "3.4" # Note that hyperopt currently seems to have issues with 3.4
 install:
   # code below is taken from http://conda.pydata.org/docs/travis.html
   # We do this conditionally because it saves us some downloading if the
@@ -19,14 +19,13 @@ install:
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
   - conda info -a
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy pytest h5py flask
+  - travis_retry conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION nose
   - source activate test-environment
-  - pip install pytest-cov python-coveralls
-  - python setup.py install
-  - pip install -r requirements.txt
+  - pip install Cython --install-option="--no-cython-compile"
+  - pip install -e .[tests]
 
 script:
   - python -c "import keras.backend"
-  - py.test tests/
+  - py.test --pep8 -m pep8 tests/
 after_success:
   - coveralls

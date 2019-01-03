@@ -31,6 +31,7 @@ class Optimizer(object):
     """Optimizer for elephas models, adapted from
     respective Keras module.
     """
+
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         self.updates = []
@@ -67,6 +68,7 @@ class Optimizer(object):
 
 class SGD(Optimizer):
     """SGD, optionally with nesterov momentum """
+
     def __init__(self, lr=0.01, momentum=0., decay=0.,
                  nesterov=False, *args, **kwargs):
         super(SGD, self).__init__(**kwargs)
@@ -103,6 +105,7 @@ class SGD(Optimizer):
 class RMSprop(Optimizer):
     """Reference: www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf
     """
+
     def __init__(self, lr=0.001, rho=0.9, epsilon=1e-6, *args, **kwargs):
         super(RMSprop, self).__init__(**kwargs)
         self.__dict__.update(locals())
@@ -132,6 +135,7 @@ class RMSprop(Optimizer):
 class Adagrad(Optimizer):
     """Reference: http://www.magicbroom.info/Papers/DuchiHaSi10.pdf
     """
+
     def __init__(self, lr=0.01, epsilon=1e-6, *args, **kwargs):
         super(Adagrad, self).__init__(**kwargs)
         self.__dict__.update(locals())
@@ -156,6 +160,7 @@ class Adagrad(Optimizer):
 class Adadelta(Optimizer):
     """Reference: http://arxiv.org/abs/1212.5701
     """
+
     def __init__(self, lr=1.0, rho=0.95, epsilon=1e-6, *args, **kwargs):
         super(Adadelta, self).__init__(**kwargs)
         self.__dict__.update(locals())
@@ -190,6 +195,7 @@ class Adam(Optimizer):
     """Reference: http://arxiv.org/abs/1412.6980v8
     Default parameters follow those provided in the original paper.
     """
+
     def __init__(self, lr=0.001, beta_1=0.9, beta_2=0.999,
                  epsilon=1e-8, *args, **kwargs):
         super(Adam, self).__init__(**kwargs)
@@ -221,12 +227,14 @@ class Adam(Optimizer):
                 "beta_2": self.beta_2,
                 "epsilon": self.epsilon}
 
+
 # aliases
 sgd = SGD
 rmsprop = RMSprop
 adagrad = Adagrad
 adadelta = Adadelta
 adam = Adam
+
 
 def serialize(optimizer):
     return serialize_keras_object(optimizer)

@@ -80,7 +80,7 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
         elephas_optimizer = None
         if self.get_elephas_optimizer_config() is not None:
             elephas_optimizer = get({'class_name': self.get_optimizer_config()['class_name'],
-                             'config': self.get_optimizer_config()})
+                                     'config': self.get_optimizer_config()})
 
         keras_model = model_from_yaml(self.get_keras_model_config())
         metrics = self.get_metrics()
@@ -117,7 +117,8 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol):
     def __init__(self, **kwargs):
         super(ElephasTransformer, self).__init__()
         if "weights" in kwargs.keys():
-            self.weights = kwargs.pop('weights')  # Strip model weights from parameters to init Transformer
+            # Strip model weights from parameters to init Transformer
+            self.weights = kwargs.pop('weights')
         self.set_params(**kwargs)
 
     @keyword_only
@@ -142,7 +143,6 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol):
         f.flush()
         f.close()
 
-
     def get_model(self):
         return model_from_yaml(self.get_keras_model_config())
 
@@ -155,11 +155,13 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol):
         new_schema.add(StructField(output_col, StringType(), True))
 
         rdd = df.rdd.coalesce(1)
-        features = np.asarray(rdd.map(lambda x: from_vector(x.features)).collect())
+        features = np.asarray(
+            rdd.map(lambda x: from_vector(x.features)).collect())
         # Note that we collect, since executing this on the rdd would require model serialization once again
         model = model_from_yaml(self.get_keras_model_config())
         model.set_weights(self.weights.value)
-        predictions = rdd.ctx.parallelize(model.predict_classes(features)).coalesce(1)
+        predictions = rdd.ctx.parallelize(
+            model.predict_classes(features)).coalesce(1)
         predictions = predictions.map(lambda x: tuple(str(x)))
 
         results_rdd = rdd.zip(predictions).map(lambda x: x[0] + x[1])
@@ -167,8 +169,10 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol):
         # results_rdd = rdd.zip(predictions).map(lambda pair: Row(features=to_vector(pair[0].features),
         #                                        label=pair[0].label, prediction=float(pair[1])))
         results_df = df.sql_ctx.createDataFrame(results_rdd, new_schema)
-        results_df = results_df.withColumn(output_col, results_df[output_col].cast(DoubleType()))
-        results_df = results_df.withColumn(label_col, results_df[label_col].cast(DoubleType()))
+        results_df = results_df.withColumn(
+            output_col, results_df[output_col].cast(DoubleType()))
+        results_df = results_df.withColumn(
+            label_col, results_df[label_col].cast(DoubleType()))
 
         return results_df
 

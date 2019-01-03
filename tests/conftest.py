@@ -16,7 +16,8 @@ def spark_context(request):
     Args:
         request: pytest.FixtureRequest object
     """
-    conf = (SparkConf().setMaster("local[2]").setAppName("pytest-pyspark-local-testing"))
+    conf = (SparkConf().setMaster("local[2]").setAppName(
+        "pytest-pyspark-local-testing"))
     sc = SparkContext(conf=conf)
     request.addfinalizer(lambda: sc.stop())
 
@@ -30,7 +31,8 @@ def sql_context(request):
     Args:
         request: pytest.FixtureRequest object
     """
-    conf = (SparkConf().setMaster("local[2]").setAppName("pytest-pyspark-local-testing"))
+    conf = (SparkConf().setMaster("local[2]").setAppName(
+        "pytest-pyspark-local-testing"))
     sc = SparkContext(conf=conf)
     sql_context = SQLContext(sc)
     request.addfinalizer(lambda: sc.stop())

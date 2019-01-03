@@ -16,6 +16,7 @@ class HyperParamModel(object):
     Computes distributed hyper-parameter optimization using Hyperas and
     Spark.
     """
+
     def __init__(self, sc, num_workers=4):
         self.spark_context = sc
         self.num_workers = num_workers
@@ -26,14 +27,16 @@ class HyperParamModel(object):
         hyperas_worker = HyperasWorker(model_string, max_evals)
         dummy_rdd = self.spark_context.parallelize([i for i in range(1, 1000)])
         dummy_rdd = dummy_rdd.repartition(self.num_workers)
-        trials_list = dummy_rdd.mapPartitions(hyperas_worker._minimize).collect()
+        trials_list = dummy_rdd.mapPartitions(
+            hyperas_worker._minimize).collect()
 
         return trials_list
 
     def minimize(self, model, data, max_evals, notebook_name=None):
         global best_model_yaml, best_model_weights
 
-        trials_list = self.compute_trials(model, data, max_evals, notebook_name)
+        trials_list = self.compute_trials(
+            model, data, max_evals, notebook_name)
 
         best_val = 1e7
         for trials in trials_list:
@@ -61,14 +64,16 @@ class HyperParamModel(object):
             nb_models = len(trials_list)
         scores = []
         for trials in trials_list:
-            scores = scores + [trial.get('result').get('loss') for trial in trials]
+            scores = scores + [trial.get('result').get('loss')
+                               for trial in trials]
         cut_off = sorted(scores, reverse=True)[nb_models - 1]
         model_list = []
         for trials in trials_list:
             for trial in trials:
                 if trial.get('result').get('loss') >= cut_off:
                     model = model_from_yaml(trial.get('result').get('model'))
-                    model.set_weights(pickle.loads(trial.get('result').get('weights')))
+                    model.set_weights(pickle.loads(
+                        trial.get('result').get('weights')))
                     model_list.append(model)
         return model_list
 
@@ -78,6 +83,7 @@ class HyperasWorker(object):
 
     Executes hyper-parameter search on each worker and returns results.
     """
+
     def __init__(self, bc_model, bc_max_evals):
         self.model_string = bc_model
         self.max_evals = bc_max_evals

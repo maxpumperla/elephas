@@ -14,6 +14,7 @@ class RWLock:
     simultaneously, XOR one writer. Write locks have priority over reads to
     prevent write starvation.
     """
+
     def __init__(self):
         self.rwlock = 0
         self.writers_waiting = 0

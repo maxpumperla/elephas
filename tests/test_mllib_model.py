@@ -47,17 +47,20 @@ model.compile(rms, 'categorical_crossentropy', ['acc'])
 
 
 def test_serialization():
-    spark_model = SparkMLlibModel(model, frequency='epoch', mode='synchronous', num_workers=2)
+    spark_model = SparkMLlibModel(
+        model, frequency='epoch', mode='synchronous', num_workers=2)
     spark_model.save("test.h5")
     load_spark_model("test.h5")
 
 
 def test_mllib_model(spark_context):
     # Build RDD from numpy features and labels
-    lp_rdd = to_labeled_point(spark_context, x_train, y_train, categorical=True)
+    lp_rdd = to_labeled_point(spark_context, x_train,
+                              y_train, categorical=True)
 
     # Initialize SparkModel from Keras model and Spark context
-    spark_model = SparkMLlibModel(model=model, frequency='epoch', mode='synchronous')
+    spark_model = SparkMLlibModel(
+        model=model, frequency='epoch', mode='synchronous')
 
     # Train Spark model
     spark_model.fit(lp_rdd, epochs=5, batch_size=32, verbose=0,

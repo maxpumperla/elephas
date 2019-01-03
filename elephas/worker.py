@@ -11,6 +11,7 @@ from .parameter import SocketClient, HttpClient
 class SparkWorker(object):
     """Synchronous Spark worker. This code will be executed on workers.
     """
+
     def __init__(self, yaml, parameters, train_config, master_optimizer,
                  master_loss, master_metrics, custom_objects):
         self.yaml = yaml
@@ -27,25 +28,29 @@ class SparkWorker(object):
         """
         optimizer = get_optimizer(self.master_optimizer)
         self.model = model_from_yaml(self.yaml, self.custom_objects)
-        self.model.compile(optimizer=optimizer, loss=self.master_loss, metrics=self.master_metrics)
+        self.model.compile(optimizer=optimizer,
+                           loss=self.master_loss, metrics=self.master_metrics)
         self.model.set_weights(self.parameters.value)
 
         feature_iterator, label_iterator = tee(data_iterator, 2)
         x_train = np.asarray([x for x, y in feature_iterator])
         y_train = np.asarray([y for x, y in label_iterator])
 
-        self.model.compile(optimizer=self.master_optimizer, loss=self.master_loss, metrics=self.master_metrics)
+        self.model.compile(optimizer=self.master_optimizer,
+                           loss=self.master_loss, metrics=self.master_metrics)
         weights_before_training = self.model.get_weights()
         if x_train.shape[0] > self.train_config.get('batch_size'):
             self.model.fit(x_train, y_train, **self.train_config)
         weights_after_training = self.model.get_weights()
-        deltas = subtract_params(weights_before_training, weights_after_training)
+        deltas = subtract_params(
+            weights_before_training, weights_after_training)
         yield deltas
 
 
 class AsynchronousSparkWorker(object):
     """Asynchronous Spark worker. This code will be executed on workers.
     """
+
     def __init__(self, yaml, parameters, parameter_server_mode, train_config, frequency,
                  master_optimizer, master_loss, master_metrics, custom_objects):
 
@@ -80,7 +85,8 @@ class AsynchronousSparkWorker(object):
 
         optimizer = get_optimizer(self.master_optimizer)
         self.model = model_from_yaml(self.yaml, self.custom_objects)
-        self.model.compile(optimizer=optimizer, loss=self.master_loss, metrics=self.master_metrics)
+        self.model.compile(optimizer=optimizer,
+                           loss=self.master_loss, metrics=self.master_metrics)
         self.model.set_weights(self.parameters.value)
 
         epochs = self.train_config['epochs']
@@ -102,7 +108,8 @@ class AsynchronousSparkWorker(object):
                     self.model.fit(x_train, y_train, **self.train_config)
                 self.train_config['epochs'] = epochs
                 weights_after_training = self.model.get_weights()
-                deltas = subtract_params(weights_before_training, weights_after_training)
+                deltas = subtract_params(
+                    weights_before_training, weights_after_training)
                 self.client.update_parameters(deltas)
         elif self.frequency == 'batch':
             for epoch in range(epochs):
@@ -115,8 +122,10 @@ class AsynchronousSparkWorker(object):
                         y = slice_arrays(y_train, batch_ids)
                         self.model.train_on_batch(x, y)
                         weights_after_training = self.model.get_weights()
-                        deltas = subtract_params(weights_before_training, weights_after_training)
+                        deltas = subtract_params(
+                            weights_before_training, weights_after_training)
                         self.client.update_parameters(deltas)
         else:
-            raise ValueError('frequency parameter can be `epoch` or `batch, got {}'.format(self.frequency))
+            raise ValueError(
+                'frequency parameter can be `epoch` or `batch, got {}'.format(self.frequency))
         yield []

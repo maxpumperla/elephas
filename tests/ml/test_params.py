@@ -5,7 +5,7 @@ def test_has_keras_model_config():
     param = HasKerasModelConfig()
     conf = {"foo": "bar"}
     param.set_keras_model_config(conf)
-    assert  conf == param.get_keras_model_config()
+    assert conf == param.get_keras_model_config()
 
 
 def test_has_elephas_optimizer_config():
