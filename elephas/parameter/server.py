@@ -134,9 +134,10 @@ class HttpServer(BaseParameterServer):
                 self.lock.release()
             return 'Update done'
 
-        self.app.run(host='0.0.0.0', debug=self.debug, port=self.port,
-                     threaded=self.threaded, use_reloader=self.use_reloader)
-
+        # self.app.run(host='0.0.0.0', debug=self.debug, port=self.port,
+        #              threaded=self.threaded, use_reloader=self.use_reloader)
+        from werkzeug.serving import run_simple
+        run_simple(self.master_url.split(':')[0], self.port, self.app)
 
 class SocketServer(BaseParameterServer):
     """SocketServer
