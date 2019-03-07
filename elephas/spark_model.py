@@ -187,11 +187,11 @@ class SparkModel(object):
                                  optimizer, loss, metrics, custom)
             deltas = rdd.mapPartitions(worker.train).collect()
             new_parameters = self.master_network.get_weights()
-            for delta in deltas:
+            for delta, weight in deltas:
                 def base_constraint(a): return a
-                constraints = [base_constraint for _ in self.weights]
+                constraints = [base_constraint for _ in weight]
                 new_parameters = self.optimizer.get_updates(
-                    self.weights, constraints, delta)
+                    weight, constraints, delta)
         else:
             raise ValueError("Unsupported mode {}".format(self.mode))
         self.master_network.set_weights(new_parameters)
