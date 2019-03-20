@@ -70,8 +70,9 @@ class SocketClient(BaseParameterClient):
     indicate a get-request, those with a `u` indicate a parameter update.
     """
 
-    def __init__(self, host='0.0.0.0', port=4000):
+    def __init__(self, port=4000):
 
+        host = self.master_url.split(':')[0]
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect((host, port))
 

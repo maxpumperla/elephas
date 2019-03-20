@@ -1,16 +1,16 @@
 import abc
 import socket
-from threading import Lock, Thread
+from threading import Thread
 import six.moves.cPickle as pickle
 from flask import Flask, request
 from multiprocessing import Process
 
-from ..utils.sockets import determine_master
-from ..utils.sockets import receive, send
-from ..utils.serialization import dict_to_model
-# from multiprocessing import Lock
-from ..utils.rwlock import RWLock as Lock
-from ..utils.notebook_utils import is_running_in_notebook
+from elephas.utils.sockets import determine_master
+from elephas.utils.sockets import receive, send
+from elephas.utils.serialization import dict_to_model
+from elephas.utils.rwlock import RWLock as Lock
+from elephas.utils.notebook_utils import is_running_in_notebook
+from elephas.utils import subtract_params
 
 
 class BaseParameterServer(object):
@@ -45,15 +45,14 @@ class HttpServer(BaseParameterServer):
     POST updates.
     """
 
-    def __init__(self, model, optimizer, mode, port=4000, debug=True,
-                 threaded=True, use_reloader=True):
-        """Initializes and HTTP server from a serialized Keras model, elephas optimizer,
+    def __init__(self, model, mode, port=4000, debug=True,
+                 threaded=True, use_reloader=False):
+        """Initializes and HTTP server from a serialized Keras model
         a parallelisation mode and a port to run the Flask application on. In
         hogwild mode no read- or write-locks will be acquired, in asynchronous
         mode this is the case.
 
         :param model: Serialized Keras model
-        :param optimizer: Elephas optimizer
         :param mode: parallelization mode, either `asynchronous` or `hogwild`
         :param port: int, port to run the application on
         :param debug: boolean, Flask debug mode
@@ -64,7 +63,6 @@ class HttpServer(BaseParameterServer):
         self.master_network = dict_to_model(model)
         self.mode = mode
         self.master_url = None
-        self.optimizer = optimizer
 
         self.port = port
 
@@ -126,15 +124,17 @@ class HttpServer(BaseParameterServer):
             if not self.master_network.built:
                 self.master_network.build()
 
-            def base_constraint(a): return a
-            constraints = [base_constraint for _ in self.weights]
-            self.weights = self.optimizer.get_updates(
-                self.weights, constraints, delta)
+            # Just apply the gradient
+            weights_before = self.weights
+            self.weights = subtract_params(weights_before, delta)
+
             if self.mode == 'asynchronous':
                 self.lock.release()
             return 'Update done'
 
-        self.app.run(host='0.0.0.0', debug=self.debug, port=self.port,
+        master_url = determine_master(self.port)
+        host = master_url.split(':')[0]
+        self.app.run(host=host, debug=self.debug, port=self.port,
                      threaded=self.threaded, use_reloader=self.use_reloader)
 
 

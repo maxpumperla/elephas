@@ -1,15 +1,24 @@
 from six.moves import cPickle as pickle
 from socket import gethostbyname, gethostname
+import os
 
 
 def determine_master(port=4000):
     """Determine address of master so that workers
-    can connect to it.
+    can connect to it. If the environment variable
+    SPARK_LOCAL_IP is set, that address will be used.
 
     :param port: port on which the application runs
     :return: Master address
+
+    Example usage:
+        SPARK_LOCAL_IP=127.0.0.1 spark-submit --master \
+            local[8] examples/mllib_mlp.py
     """
-    return gethostbyname(gethostname()) + ":" + str(port)
+    if os.environ.get('SPARK_LOCAL_IP'):
+        return os.environ['SPARK_LOCAL_IP'] + ":" + str(port)
+    else:
+        return gethostbyname(gethostname()) + ":" + str(port)
 
 
 def _receive_all(socket, num_bytes):
