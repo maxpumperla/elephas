@@ -46,7 +46,7 @@ class SparkWorker(object):
         weights_after_training = self.model.get_weights()
         deltas = subtract_params(
             weights_before_training, weights_after_training)
-        yield deltas, weights_after_training
+        yield deltas
 
 
 class AsynchronousSparkWorker(object):

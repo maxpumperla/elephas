@@ -7,10 +7,10 @@ import json
 from keras.optimizers import serialize as serialize_optimizer
 from keras.models import load_model
 
+from .utils import subtract_params
 from .utils import lp_to_simple_rdd
 from .utils import model_to_dict
 from .mllib import to_matrix, from_matrix, to_vector, from_vector
-from .optimizers import SGD
 from .worker import AsynchronousSparkWorker, SparkWorker
 from .parameter import HttpServer, SocketServer
 from .parameter import HttpClient, SocketClient
@@ -19,7 +19,7 @@ from .parameter import HttpClient, SocketClient
 class SparkModel(object):
 
     def __init__(self, model, mode='asynchronous', frequency='epoch',  parameter_server_mode='http', num_workers=None,
-                 elephas_optimizer=None, custom_objects=None, batch_size=32,  port=4000, *args, **kwargs):
+                 custom_objects=None, batch_size=32,  port=4000, *args, **kwargs):
         """SparkModel
 
         Base class for distributed training on RDDs. Spark model takes a Keras
@@ -31,7 +31,6 @@ class SparkModel(object):
         :param frequency: String, either `epoch` or `batch`
         :param parameter_server_mode: String, either `http` or `socket`
         :param num_workers: int, number of workers used for training (defaults to None)
-        :param elephas_optimizer: Elephas optimizer
         :param custom_objects: Keras custom objects
         :param batch_size: batch size used for training and inference
         :param port: port used in case of 'http' parameter server mode
@@ -49,10 +48,6 @@ class SparkModel(object):
             custom_objects = {}
         if metrics is None:
             metrics = ["accuracy"]
-        if elephas_optimizer is None:
-            self.optimizer = SGD()
-        else:
-            self.optimizer = elephas_optimizer
         self.mode = mode
         self.frequency = frequency
         self.num_workers = num_workers
@@ -71,7 +66,7 @@ class SparkModel(object):
         if self.mode is not 'synchronous':
             if self.parameter_server_mode == 'http':
                 self.parameter_server = HttpServer(
-                    self.serialized_model, self.optimizer, self.mode, self.port)
+                    self.serialized_model, self.mode, self.port)
                 self.client = HttpClient(self.port)
             elif self.parameter_server_mode == 'socket':
                 self.parameter_server = SocketServer(self.serialized_model)
@@ -90,7 +85,6 @@ class SparkModel(object):
     def get_config(self):
         base_config = {
             'parameter_server_mode': self.parameter_server_mode,
-            'elephas_optimizer': self.optimizer.get_config(),
             'mode': self.mode,
             'frequency': self.frequency,
             'num_workers': self.num_workers,
@@ -187,13 +181,10 @@ class SparkModel(object):
         elif self.mode == 'synchronous':
             worker = SparkWorker(yaml, parameters, train_config,
                                  optimizer, loss, metrics, custom)
-            deltas = rdd.mapPartitions(worker.train).collect()
+            gradients = rdd.mapPartitions(worker.train).collect()
             new_parameters = self._master_network.get_weights()
-            for delta, weight in deltas:
-                def base_constraint(a): return a
-                constraints = [base_constraint for _ in weight]
-                new_parameters = self.optimizer.get_updates(
-                    weight, constraints, delta)
+            for grad in gradients:  # simply accumulate gradients one by one
+                new_parameters = subtract_params(new_parameters, grad)
         else:
             raise ValueError("Unsupported mode {}".format(self.mode))
         self._master_network.set_weights(new_parameters)
@@ -227,14 +218,13 @@ class SparkMLlibModel(SparkModel):
         :param frequency: String, either `epoch` or `batch`
         :param parameter_server_mode: String, either `http` or `socket`
         :param num_workers: int, number of workers used for training (defaults to None)
-        :param elephas_optimizer: Elephas optimizer
         :param custom_objects: Keras custom objects
         :param batch_size: batch size used for training and inference
         :param port: port used in case of 'http' parameter server mode
         """
         SparkModel.__init__(self, model=model, mode=mode, frequency=frequency,
                             parameter_server_mode=parameter_server_mode, num_workers=num_workers,
-                            elephas_optimizer=elephas_optimizer, custom_objects=custom_objects,
+                            custom_objects=custom_objects,
                             batch_size=batch_size, port=port, *args, **kwargs)
 
     def fit(self, labeled_points, epochs=10, batch_size=32, verbose=0, validation_split=0.1,

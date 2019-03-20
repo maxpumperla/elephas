@@ -21,24 +21,6 @@ class HasKerasModelConfig(Params):
         return self.getOrDefault(self.keras_model_config)
 
 
-class HasElephasOptimizerConfig(Params):
-    """Parameter mixin for Elephas optimizer config
-    """
-
-    def __init__(self):
-        super(HasElephasOptimizerConfig, self).__init__()
-        self.elephas_optimizer_config = Param(self, "elephas_optimizer_config",
-                                              "Serialized Elephas optimizer properties")
-        self._setDefault(elephas_optimizer_config=None)
-
-    def set_elephas_optimizer_config(self, elephas_optimizer_config):
-        self._paramMap[self.elephas_optimizer_config] = elephas_optimizer_config
-        return self
-
-    def get_elephas_optimizer_config(self):
-        return self.getOrDefault(self.elephas_optimizer_config)
-
-
 class HasMode(Params):
     """Parameter mixin for Elephas mode
     """
