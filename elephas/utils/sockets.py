@@ -15,7 +15,7 @@ def determine_master(port=4000):
         SPARK_LOCAL_IP=127.0.0.1 spark-submit --master \
             local[8] examples/mllib_mlp.py
     """
-    if os.environ['SPARK_LOCAL_IP']:
+    if os.environ.get('SPARK_LOCAL_IP'):
         return os.environ['SPARK_LOCAL_IP'] + ":" + str(port)
     else:
         return gethostbyname(gethostname()) + ":" + str(port)

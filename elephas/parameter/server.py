@@ -46,7 +46,7 @@ class HttpServer(BaseParameterServer):
     """
 
     def __init__(self, model, mode, port=4000, debug=True,
-                 threaded=True, use_reloader=True):
+                 threaded=True, use_reloader=False):
         """Initializes and HTTP server from a serialized Keras model
         a parallelisation mode and a port to run the Flask application on. In
         hogwild mode no read- or write-locks will be acquired, in asynchronous
@@ -125,13 +125,15 @@ class HttpServer(BaseParameterServer):
                 self.master_network.build()
 
             # Just apply the gradient
-            self.weights = subtract_params(self.weights, delta)
+            weights_before = self.weights
+            self.weights = subtract_params(weights_before, delta)
 
             if self.mode == 'asynchronous':
                 self.lock.release()
             return 'Update done'
 
-        host = self.master_url.split(':')[0]
+        master_url = determine_master(self.port)
+        host = master_url.split(':')[0]
         self.app.run(host=host, debug=self.debug, port=self.port,
                      threaded=self.threaded, use_reloader=self.use_reloader)
 

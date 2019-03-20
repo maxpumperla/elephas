@@ -54,10 +54,11 @@ model.compile(sgd, 'categorical_crossentropy', ['acc'])
 rdd = to_simple_rdd(sc, x_train, y_train)
 
 # Initialize SparkModel from Keras model and Spark context
-spark_model = SparkModel(model, frequency='epoch', mode='asynchronous')
+spark_model = SparkModel(model, mode='synchronous')
 
 # Train Spark model
-spark_model.fit(rdd, epochs=epochs, batch_size=batch_size, verbose=0, validation_split=0.1)
+spark_model.fit(rdd, epochs=epochs, batch_size=batch_size, verbose=2, validation_split=0.1)
+
 # Evaluate Spark model by evaluating the underlying model
 score = spark_model.master_network.evaluate(x_test, y_test, verbose=2)
 print('Test accuracy:', score[1])

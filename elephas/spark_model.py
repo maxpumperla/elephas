@@ -143,6 +143,7 @@ class SparkModel(object):
         :param verbose: logging verbosity level (0, 1 or 2)
         :param validation_split: percentage of data set aside for validation
         """
+        print('>>> Fit model')
         if self.num_workers:
             rdd = rdd.repartition(self.num_workers)
 
@@ -174,9 +175,12 @@ class SparkModel(object):
         parameters = rdd.context.broadcast(init)
 
         if self.mode in ['asynchronous', 'hogwild']:
+            print('>>> Initialize workers')
             worker = AsynchronousSparkWorker(
                 yaml, parameters, mode, train_config, freq, optimizer, loss, metrics, custom)
+            print('>>> Distribute load')
             rdd.mapPartitions(worker.train).collect()
+            print('>>> Async training complete.')
             new_parameters = self.client.get_parameters()
         elif self.mode == 'synchronous':
             worker = SparkWorker(yaml, parameters, train_config,
@@ -185,6 +189,7 @@ class SparkModel(object):
             new_parameters = self._master_network.get_weights()
             for grad in gradients:  # simply accumulate gradients one by one
                 new_parameters = subtract_params(new_parameters, grad)
+            print('>>> Synchronous training complete.')
         else:
             raise ValueError("Unsupported mode {}".format(self.mode))
         self._master_network.set_weights(new_parameters)
