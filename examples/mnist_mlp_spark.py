@@ -9,7 +9,6 @@ from keras.utils import np_utils
 
 from elephas.spark_model import SparkModel
 from elephas.utils.rdd_utils import to_simple_rdd
-from elephas import optimizers as elephas_optimizers
 
 from pyspark import SparkContext, SparkConf
 

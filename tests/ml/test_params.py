@@ -8,13 +8,6 @@ def test_has_keras_model_config():
     assert conf == param.get_keras_model_config()
 
 
-def test_has_elephas_optimizer_config():
-    param = HasElephasOptimizerConfig()
-    conf = {"foo": "bar"}
-    param.set_elephas_optimizer_config(conf)
-    assert conf == param.get_elephas_optimizer_config()
-
-
 def test_has_optimizer_config():
     param = HasKerasOptimizerConfig()
     conf = {"foo": "bar"}

@@ -15,7 +15,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation
 
 from elephas.ml_model import ElephasEstimator
-from elephas import optimizers as elephas_optimizers
+
 
 data_path = "../"
 
@@ -77,8 +77,6 @@ sgd = optimizers.SGD(lr=0.01)
 sgd_conf = optimizers.serialize(sgd)
 
 # Initialize Elephas Spark ML Estimator
-adadelta = elephas_optimizers.Adadelta()
-
 estimator = ElephasEstimator()
 estimator.set_keras_model_config(model.to_yaml())
 estimator.set_optimizer_config(sgd_conf)
@@ -87,7 +85,6 @@ estimator.set_loss("categorical_crossentropy")
 estimator.set_metrics(['acc'])
 estimator.setFeaturesCol("scaled_features")
 estimator.setLabelCol("index_category")
-estimator.set_elephas_optimizer_config(adadelta.get_config())
 estimator.set_epochs(10)
 estimator.set_batch_size(128)
 estimator.set_num_workers(1)
