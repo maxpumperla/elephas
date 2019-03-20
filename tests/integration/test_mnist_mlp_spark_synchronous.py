@@ -58,7 +58,8 @@ def test_sync_mode(spark_context):
     spark_model = SparkModel(model, mode='synchronous')
 
     # Train Spark model
-    spark_model.fit(rdd, epochs=epochs, batch_size=batch_size, verbose=2, validation_split=0.1)
+    spark_model.fit(rdd, epochs=epochs, batch_size=batch_size,
+                    verbose=2, validation_split=0.1)
 
     # Evaluate Spark model by evaluating the underlying model
     score = spark_model.master_network.evaluate(x_test, y_test, verbose=2)
