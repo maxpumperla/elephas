@@ -1,6 +1,6 @@
 import abc
 import socket
-from threading import Lock, Thread
+from threading import Thread
 import six.moves.cPickle as pickle
 from flask import Flask, request
 from multiprocessing import Process
@@ -8,7 +8,6 @@ from multiprocessing import Process
 from ..utils.sockets import determine_master
 from ..utils.sockets import receive, send
 from ..utils.serialization import dict_to_model
-# from multiprocessing import Lock
 from ..utils.rwlock import RWLock as Lock
 from ..utils.notebook_utils import is_running_in_notebook
 
@@ -134,7 +133,8 @@ class HttpServer(BaseParameterServer):
                 self.lock.release()
             return 'Update done'
 
-        self.app.run(host='0.0.0.0', debug=self.debug, port=self.port,
+        host = self.master_url.split(':')[0]
+        self.app.run(host=host, debug=self.debug, port=self.port,
                      threaded=self.threaded, use_reloader=self.use_reloader)
 
 

@@ -37,14 +37,16 @@ class SparkWorker(object):
         y_train = np.asarray([y for x, y in label_iterator])
 
         self.model.compile(optimizer=self.master_optimizer,
-                           loss=self.master_loss, metrics=self.master_metrics)
+                           loss=self.master_loss, 
+                           metrics=self.master_metrics)
+        
         weights_before_training = self.model.get_weights()
         if x_train.shape[0] > self.train_config.get('batch_size'):
             self.model.fit(x_train, y_train, **self.train_config)
         weights_after_training = self.model.get_weights()
         deltas = subtract_params(
             weights_before_training, weights_after_training)
-        yield deltas
+        yield deltas, weights_after_training
 
 
 class AsynchronousSparkWorker(object):

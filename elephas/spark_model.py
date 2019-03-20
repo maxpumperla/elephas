@@ -19,7 +19,7 @@ from .parameter import HttpClient, SocketClient
 class SparkModel(object):
 
     def __init__(self, model, mode='asynchronous', frequency='epoch',  parameter_server_mode='http', num_workers=None,
-                 elephas_optimizer=None, custom_objects=None, batch_size=32, *args, **kwargs):
+                 elephas_optimizer=None, custom_objects=None, batch_size=32,  port=4000, *args, **kwargs):
         """SparkModel
 
         Base class for distributed training on RDDs. Spark model takes a Keras
@@ -33,6 +33,8 @@ class SparkModel(object):
         :param num_workers: int, number of workers used for training (defaults to None)
         :param elephas_optimizer: Elephas optimizer
         :param custom_objects: Keras custom objects
+        :param batch_size: batch size used for training and inference
+        :param port: port used in case of 'http' parameter server mode
         """
 
         self._master_network = model
@@ -62,20 +64,21 @@ class SparkModel(object):
         self.custom_objects = custom_objects
         self.parameter_server_mode = parameter_server_mode
         self.batch_size = batch_size
+        self.port = port
         self.kwargs = kwargs
 
-        self.serialized_model = model_to_dict(self.master_network)
-        # TODO only set this for async/hogwild mode
-        if self.parameter_server_mode == 'http':
-            self.parameter_server = HttpServer(
-                self.serialized_model, self.optimizer, self.mode)
-            self.client = HttpClient()
-        elif self.parameter_server_mode == 'socket':
-            self.parameter_server = SocketServer(self.serialized_model)
-            self.client = SocketClient()
-        else:
-            raise ValueError("Parameter server mode has to be either `http` or `socket`, "
-                             "got {}".format(self.parameter_server_mode))
+        self.serialized_model = model_to_dict(model)
+        if self.mode is not 'synchronous':
+            if self.parameter_server_mode == 'http':
+                self.parameter_server = HttpServer(
+                    self.serialized_model, self.optimizer, self.mode, self.port)
+                self.client = HttpClient(self.port)
+            elif self.parameter_server_mode == 'socket':
+                self.parameter_server = SocketServer(self.serialized_model)
+                self.client = SocketClient()
+            else:
+                raise ValueError("Parameter server mode has to be either `http` or `socket`, "
+                                 "got {}".format(self.parameter_server_mode))
 
     @staticmethod
     def get_train_config(epochs, batch_size, verbose, validation_split):
@@ -97,7 +100,7 @@ class SparkModel(object):
         return config
 
     def save(self, file_name):
-        model = self.master_network
+        model = self._master_network
         model.save(file_name)
         f = h5py.File(file_name, mode='a')
 
@@ -126,12 +129,12 @@ class SparkModel(object):
     def predict(self, data):
         """Get prediction probabilities for a numpy array of features
         """
-        return self.master_network.predict(data)
+        return self._master_network.predict(data)
 
     def predict_classes(self, data):
         """ Predict classes for a numpy array of features
         """
-        return self.master_network.predict_classes(data)
+        return self._master_network.predict_classes(data)
 
     def fit(self, rdd, epochs=10, batch_size=32,
             verbose=0, validation_split=0.1):
@@ -158,9 +161,9 @@ class SparkModel(object):
     def _fit(self, rdd, epochs, batch_size, verbose, validation_split):
         """Protected train method to make wrapping of modes easier
         """
-        self.master_network.compile(optimizer=self.master_optimizer,
-                                    loss=self.master_loss,
-                                    metrics=self.master_metrics)
+        self._master_network.compile(optimizer=self.master_optimizer,
+                                     loss=self.master_loss,
+                                     metrics=self.master_metrics)
         if self.mode in ['asynchronous', 'hogwild']:
             self.start_server()
         train_config = self.get_train_config(
@@ -172,8 +175,8 @@ class SparkModel(object):
         metrics = self.master_metrics
         custom = self.custom_objects
 
-        yaml = self.master_network.to_yaml()
-        init = self.master_network.get_weights()
+        yaml = self._master_network.to_yaml()
+        init = self._master_network.get_weights()
         parameters = rdd.context.broadcast(init)
 
         if self.mode in ['asynchronous', 'hogwild']:
@@ -182,19 +185,18 @@ class SparkModel(object):
             rdd.mapPartitions(worker.train).collect()
             new_parameters = self.client.get_parameters()
         elif self.mode == 'synchronous':
-
             worker = SparkWorker(yaml, parameters, train_config,
                                  optimizer, loss, metrics, custom)
             deltas = rdd.mapPartitions(worker.train).collect()
-            new_parameters = self.master_network.get_weights()
-            for delta in deltas:
+            new_parameters = self._master_network.get_weights()
+            for delta, weight in deltas:
                 def base_constraint(a): return a
-                constraints = [base_constraint for _ in self.weights]
+                constraints = [base_constraint for _ in weight]
                 new_parameters = self.optimizer.get_updates(
-                    self.weights, constraints, delta)
+                    weight, constraints, delta)
         else:
             raise ValueError("Unsupported mode {}".format(self.mode))
-        self.master_network.set_weights(new_parameters)
+        self._master_network.set_weights(new_parameters)
         if self.mode in ['asynchronous', 'hogwild']:
             self.stop_server()
 
@@ -215,7 +217,7 @@ def load_spark_model(file_name):
 class SparkMLlibModel(SparkModel):
 
     def __init__(self, model, mode='asynchronous', frequency='epoch', parameter_server_mode='http',
-                 num_workers=4, elephas_optimizer=None, custom_objects=None, batch_size=32, *args, **kwargs):
+                 num_workers=4, elephas_optimizer=None, custom_objects=None, batch_size=32, port=4000, *args, **kwargs):
         """SparkMLlibModel
 
         The Spark MLlib model takes RDDs of LabeledPoints for training.
@@ -227,11 +229,13 @@ class SparkMLlibModel(SparkModel):
         :param num_workers: int, number of workers used for training (defaults to None)
         :param elephas_optimizer: Elephas optimizer
         :param custom_objects: Keras custom objects
+        :param batch_size: batch size used for training and inference
+        :param port: port used in case of 'http' parameter server mode
         """
         SparkModel.__init__(self, model=model, mode=mode, frequency=frequency,
                             parameter_server_mode=parameter_server_mode, num_workers=num_workers,
                             elephas_optimizer=elephas_optimizer, custom_objects=custom_objects,
-                            batch_size=batch_size, *args, **kwargs)
+                            batch_size=batch_size, port=port, *args, **kwargs)
 
     def fit(self, labeled_points, epochs=10, batch_size=32, verbose=0, validation_split=0.1,
             categorical=False, nb_classes=None):
@@ -246,9 +250,9 @@ class SparkMLlibModel(SparkModel):
         """Predict probabilities for an RDD of features
         """
         if isinstance(mllib_data, pyspark.mllib.linalg.Matrix):
-            return to_matrix(self.master_network.predict(from_matrix(mllib_data)))
+            return to_matrix(self._master_network.predict(from_matrix(mllib_data)))
         elif isinstance(mllib_data, pyspark.mllib.linalg.Vector):
-            return to_vector(self.master_network.predict(from_vector(mllib_data)))
+            return to_vector(self._master_network.predict(from_vector(mllib_data)))
         else:
             raise ValueError(
                 'Provide either an MLLib matrix or vector, got {}'.format(mllib_data.__name__))
