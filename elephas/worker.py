@@ -36,7 +36,7 @@ class SparkWorker(object):
         x_train = np.asarray([x for x, y in feature_iterator])
         y_train = np.asarray([y for x, y in label_iterator])
 
-        self.model.compile(optimizer=self.master_optimizer,
+        self.model.compile(optimizer=get_optimizer(self.master_optimizer),
                            loss=self.master_loss,
                            metrics=self.master_metrics)
 
@@ -87,7 +87,7 @@ class AsynchronousSparkWorker(object):
 
         optimizer = get_optimizer(self.master_optimizer)
         self.model = model_from_yaml(self.yaml, self.custom_objects)
-        self.model.compile(optimizer=optimizer,
+        self.model.compile(optimizer=get_optimizer(self.master_optimizer),
                            loss=self.master_loss, metrics=self.master_metrics)
         self.model.set_weights(self.parameters.value)
 

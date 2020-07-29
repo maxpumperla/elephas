@@ -5,6 +5,7 @@ import pyspark
 import h5py
 import json
 from keras.optimizers import serialize as serialize_optimizer
+from keras.optimizers import get as get_optimizer
 from keras.models import load_model
 
 from .utils import subtract_params
@@ -156,7 +157,7 @@ class SparkModel(object):
     def _fit(self, rdd, epochs, batch_size, verbose, validation_split):
         """Protected train method to make wrapping of modes easier
         """
-        self._master_network.compile(optimizer=self.master_optimizer,
+        self._master_network.compile(optimizer=get_optimizer(self.master_optimizer),
                                      loss=self.master_loss,
                                      metrics=self.master_metrics)
         if self.mode in ['asynchronous', 'hogwild']:
