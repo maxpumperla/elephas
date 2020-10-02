@@ -21,7 +21,7 @@ class HyperParamModel(object):
         self.spark_context = sc
         self.num_workers = num_workers
 
-    def compute_trials(self, model, data, max_evals, notebook_name):
+    def compute_trials(self, model, data, max_evals, notebook_name=None):
         model_string = get_hyperopt_model_string(model=model, data=data, functions=None, notebook_name=notebook_name,
                                                  verbose=False, stack=3)
         hyperas_worker = HyperasWorker(model_string, max_evals)
