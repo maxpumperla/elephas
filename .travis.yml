@@ -18,6 +18,6 @@ install:
 
 script:
   - python -c "import keras.backend"
-  - pytest -m tests/
+  - pytest tests/
 after_success:
   - coveralls
