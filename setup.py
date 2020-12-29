@@ -9,7 +9,7 @@ setup(name='elephas',
       download_url='https://github.com/maxpumperla/elephas/tarball/0.4.3',
       author='Max Pumperla',
       author_email='max.pumperla@googlemail.com',
-      install_requires=['cython', 'tensorflow==1.15.4', 'keras==2.2.4', 'hyperas', 'flask', 'six', 'pyspark==2.4.5'],
+      install_requires=['cython', 'tensorflow==1.15.4', 'keras==2.2.4', 'hyperas', 'flask', 'six', 'pyspark==2.4.0'],
       extras_require={
         'java': ['pydl4j>=0.1.3'],
         'tests': ['pytest', 'pytest-pep8', 'pytest-cov', 'mock']
