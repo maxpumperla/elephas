@@ -1,4 +1,4 @@
-This project is now archived. It's been fun working on it, but it's time for me to move on. Thank you for all the support and feedback over the last couple of years. If someone is interested in taking ownership, let's discuss. :v:
+This project is now archived. It's been fun working on it, but it's time for me to move on. Thank you for all the support and feedback over the last couple of years. Daniel Cahall has kindly agreed to continue development for this project [in his fork](https://github.com/danielenricocahall/elephas) and will handle future releases. Thank you! :v:
 ---
 
 # Elephas: Distributed Deep Learning with Keras & Spark 
