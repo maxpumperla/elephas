@@ -19,7 +19,7 @@ setup(name='elephas',
                         'pyspark==2.4.5'],
       extras_require={
         'java': ['pydl4j>=0.1.3'],
-        'tests': ['pytest', 'pytest-pep8', 'pytest-cov', 'mock']
+        'tests': ['pytest', 'pytest-pep8', 'pytest-cov', 'pytest-spark', 'mock']
     },
       packages=find_packages(),
       license='MIT',
