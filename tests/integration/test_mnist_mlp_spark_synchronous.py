@@ -64,7 +64,3 @@ def test_sync_mode(spark_context):
     # Evaluate Spark model by evaluating the underlying model
     score = spark_model.master_network.evaluate(x_test, y_test, verbose=2)
     assert score[1] >= 0.70
-
-
-if __name__ == '__main__':
-    pytest.main([__file__])
