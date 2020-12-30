@@ -8,9 +8,8 @@ from keras.layers import Dense, Dropout, Activation, Input
 from elephas.spark_model import SparkModel
 
 
-def test_sequential_serialization():
+def test_sequential_serialization(spark_context):
     # Create Spark context
-    pytest.mark.usefixtures("spark_context")
 
     seq_model = Sequential()
     seq_model.add(Dense(128, input_dim=784))

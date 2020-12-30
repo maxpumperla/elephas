@@ -8,7 +8,6 @@ from elephas.spark_model import SparkMLlibModel, load_spark_model
 from elephas.utils.rdd_utils import to_labeled_point
 
 import pytest
-pytest.mark.usefixtures("spark_context")
 
 # Define basic parameters
 batch_size = 64

@@ -13,7 +13,6 @@ from elephas.utils.rdd_utils import to_simple_rdd
 from pyspark import SparkContext, SparkConf
 
 import pytest
-pytest.mark.usefixtures("spark_context")
 
 
 def test_sync_mode(spark_context):

@@ -1,11 +1,8 @@
-import pytest
 from hyperopt import STATUS_OK
 from hyperas.distributions import choice, uniform
 import six.moves.cPickle as pickle
 
 from elephas.hyperparam import HyperParamModel
-
-pytest.mark.usefixtures("spark_context")
 
 
 def data():

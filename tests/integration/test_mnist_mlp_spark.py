@@ -11,7 +11,6 @@ from elephas.spark_model import SparkModel
 from elephas.utils.rdd_utils import to_simple_rdd
 
 import pytest
-pytest.mark.usefixtures("spark_context")
 
 
 def test_async_mode(spark_context):

@@ -16,10 +16,6 @@ batch_size = 64
 nb_classes = 10
 epochs = 1
 
-# Create Spark context
-pytest.mark.usefixtures("spark_context")
-
-
 # Load data
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
 

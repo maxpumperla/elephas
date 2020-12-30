@@ -13,8 +13,6 @@ from elephas.ml.adapter import to_data_frame
 from pyspark.mllib.evaluation import MulticlassMetrics
 from pyspark.ml import Pipeline
 
-import pytest
-pytest.mark.usefixtures("spark_context")
 
 # Define basic parameters
 batch_size = 64
