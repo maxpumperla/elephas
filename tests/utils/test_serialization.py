@@ -6,7 +6,7 @@ from elephas.utils import serialization
 def test_model_to_dict():
     model = Sequential()
     dict_model = serialization.model_to_dict(model)
-    assert dict_model.keys() == ['model', 'weights']
+    assert list(dict_model.keys()) == ['model', 'weights']
 
 
 def test_dict_to_model():
