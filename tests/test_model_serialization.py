@@ -91,6 +91,3 @@ def test_java_sharing_serde():
                                         threshold_step=1e-5, collect_stats=False, save_file='temp.h5')
     spark_model.save("java_param_sharing_model.h5")
 
-
-if __name__ == '__main__':
-    pytest.main([__file__])
