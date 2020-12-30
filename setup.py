@@ -15,7 +15,7 @@ setup(name='elephas',
                         'hyperas',
                         'flask',
                         'six',
-                        'h5py==2.10.0'
+                        'h5py==2.10.0',
                         'pyspark==2.4.5'],
       extras_require={
         'java': ['pydl4j>=0.1.3'],
