@@ -85,7 +85,6 @@ class AsynchronousSparkWorker(object):
         if x_train.size == 0:
             return
 
-        optimizer = get_optimizer(self.master_optimizer)
         self.model = model_from_yaml(self.yaml, self.custom_objects)
         self.model.compile(optimizer=get_optimizer(self.master_optimizer),
                            loss=self.master_loss, metrics=self.master_metrics)
