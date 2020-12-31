@@ -71,7 +71,7 @@ class SocketClient(BaseParameterClient):
     """
 
     def __init__(self, port=4000):
-
+        self.master_url = determine_master(port=port)
         host = self.master_url.split(':')[0]
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect((host, port))
