@@ -50,7 +50,8 @@ def test_serialization_transformer():
     transformer = ElephasTransformer()
     transformer.set_keras_model_config(model.to_yaml())
     transformer.save("test.h5")
-    load_ml_transformer("test.h5")
+    loaded_model = load_ml_transformer("test.h5")
+    assert loaded_model.get_model().to_yaml() == model.to_yaml()
 
 
 def test_serialization_estimator():
@@ -59,7 +60,8 @@ def test_serialization_estimator():
     estimator.set_loss("categorical_crossentropy")
 
     estimator.save("test.h5")
-    load_ml_estimator("test.h5")
+    loaded_model = load_ml_estimator("test.h5")
+    assert loaded_model.get_model().to_yaml() == model.to_yaml()
 
 
 def test_spark_ml_model(spark_context):

@@ -49,7 +49,8 @@ def test_serialization():
     spark_model = SparkMLlibModel(
         model, frequency='epoch', mode='synchronous', num_workers=2)
     spark_model.save("test.h5")
-    load_spark_model("test.h5")
+    loaded_model = load_spark_model("test.h5")
+    loaded_model.master_network.to_yaml() == model.to_yaml()
 
 
 def test_mllib_model(spark_context):
@@ -67,4 +68,4 @@ def test_mllib_model(spark_context):
 
     # Evaluate Spark model by evaluating the underlying model
     score = spark_model.master_network.evaluate(x_test, y_test, verbose=2)
-    print('Test accuracy:', score[1])
+    assert score

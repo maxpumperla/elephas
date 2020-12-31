@@ -46,11 +46,10 @@ def model(x_train, y_train, x_test, y_test):
                     verbose=2,
                     validation_data=(x_test, y_test))
     score, acc = keras_model.evaluate(x_test, y_test, verbose=0)
-    print('Test accuracy:', acc)
     return {'loss': -acc, 'status': STATUS_OK, 'model': keras_model.to_yaml(),
             'weights': pickle.dumps(keras_model.get_weights())}
 
 
 def test_hyper_param_model(spark_context):
     hyperparam_model = HyperParamModel(spark_context)
-    hyperparam_model.minimize(model=model, data=data, max_evals=1)
+    assert hyperparam_model.minimize(model=model, data=data, max_evals=1)

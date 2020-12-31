@@ -69,6 +69,9 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
         """
         return self._set(**kwargs)
 
+    def get_model(self):
+        return model_from_yaml(self.get_keras_model_config())
+
     def _fit(self, df):
         """Private fit method of the Estimator, which trains the model.
         """
