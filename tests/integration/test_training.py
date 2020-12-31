@@ -12,7 +12,8 @@ from elephas.utils.rdd_utils import to_simple_rdd
 
 import pytest
 
-@pytest.mark.parametrize('mode', ['synchronous', 'asynchronous', 'hogwild'])
+
+@pytest.mark.parametrize('mode', ['synchronous', 'asynchronous'])
 def test_training_modes(spark_context, mode):
     # Define basic parameters
     batch_size = 64
