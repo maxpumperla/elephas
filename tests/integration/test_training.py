@@ -10,16 +10,14 @@ from keras.utils import np_utils
 from elephas.spark_model import SparkModel
 from elephas.utils.rdd_utils import to_simple_rdd
 
-from pyspark import SparkContext, SparkConf
-
 import pytest
 
-
-def test_sync_mode(spark_context):
+@pytest.mark.parametrize('mode', ['synchronous', 'asynchronous', 'hogwild'])
+def test_training_modes(spark_context, mode):
     # Define basic parameters
     batch_size = 64
     nb_classes = 10
-    epochs = 10
+    epochs = 1
 
     # Load data
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
@@ -54,12 +52,11 @@ def test_sync_mode(spark_context):
     rdd = to_simple_rdd(spark_context, x_train, y_train)
 
     # Initialize SparkModel from Keras model and Spark context
-    spark_model = SparkModel(model, mode='synchronous')
+    spark_model = SparkModel(model, frequency='epoch', mode=mode)
 
     # Train Spark model
     spark_model.fit(rdd, epochs=epochs, batch_size=batch_size,
-                    verbose=2, validation_split=0.1)
-
+                    verbose=0, validation_split=0.1)
     # Evaluate Spark model by evaluating the underlying model
     score = spark_model.master_network.evaluate(x_test, y_test, verbose=2)
-    assert score[1] >= 0.70
+    assert score[1] >= 0.7
