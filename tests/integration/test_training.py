@@ -36,7 +36,7 @@ def test_training_modes_classification(spark_context, mode, mnist_data, classifi
     score = spark_model.master_network.evaluate(x_test, y_test, verbose=2)
 
     # mnist is simple - our model should have started converging under each training mode after 10 epochs
-    assert score[1] >= 0.8
+    assert score[1] >= 0.7
 
 
 @pytest.mark.parametrize('mode', ['synchronous', 'asynchronous', 'hogwild'])
@@ -46,7 +46,7 @@ def test_training_modes_regression(spark_context, mode, boston_housing_dataset, 
 
     # Define basic parameters
     batch_size = 64
-    epochs = 100
+    epochs = 10
     sgd = SGD(lr=0.0000001)
     regression_model.compile(sgd, 'mse', ['mae'])
     spark_model = SparkModel(regression_model, frequency='epoch', mode=mode)
@@ -55,4 +55,4 @@ def test_training_modes_regression(spark_context, mode, boston_housing_dataset, 
     spark_model.fit(rdd, epochs=epochs, batch_size=batch_size,
                     verbose=0, validation_split=0.1)
     score = spark_model.master_network.evaluate(x_test, y_test, verbose=2)
-    assert score[1] <= 10
+    assert score[1] <= 15
