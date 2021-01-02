@@ -1,5 +1,6 @@
 from __future__ import absolute_import, print_function
 
+import keras
 import numpy as np
 import copy
 import h5py
@@ -160,8 +161,12 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol):
         # Note that we collect, since executing this on the rdd would require model serialization once again
         model = model_from_yaml(self.get_keras_model_config())
         model.set_weights(self.weights.value)
-        predictions = rdd.ctx.parallelize(
-            model.predict_classes(features)).coalesce(1)
+        if isinstance(model, keras.engine.Model):
+            # account for functional model users
+            predict_function = lambda x: model.predict(x).argmax(axis=-1)
+        else:
+            predict_function = model.predict_classes
+        predictions = rdd.ctx.parallelize(predict_function(features)).coalesce(1)
         predictions = predictions.map(lambda x: tuple(str(x)))
 
         results_rdd = rdd.zip(predictions).map(lambda x: x[0] + x[1])
