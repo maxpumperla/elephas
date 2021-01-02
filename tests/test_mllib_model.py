@@ -17,19 +17,19 @@ epochs = 3
 # Compile model
 
 
-def test_serialization(model):
+def test_serialization(classification_model):
     rms = RMSprop()
-    model.compile(rms, 'categorical_crossentropy', ['acc'])
+    classification_model.compile(rms, 'categorical_crossentropy', ['acc'])
     spark_model = SparkMLlibModel(
-        model, frequency='epoch', mode='synchronous', num_workers=2)
+        classification_model, frequency='epoch', mode='synchronous', num_workers=2)
     spark_model.save("test.h5")
     loaded_model = load_spark_model("test.h5")
-    assert loaded_model.master_network.to_yaml() == model.to_yaml()
+    assert loaded_model.master_network.to_yaml() == classification_model.to_yaml()
 
 
-def test_mllib_model(spark_context, model, mnist_data):
+def test_mllib_model(spark_context, classification_model, mnist_data):
     rms = RMSprop()
-    model.compile(rms, 'categorical_crossentropy', ['acc'])
+    classification_model.compile(rms, 'categorical_crossentropy', ['acc'])
     x_train, y_train, x_test, y_test = mnist_data
     x_train = x_train[:1000]
     y_train = y_train[:1000]
@@ -39,7 +39,7 @@ def test_mllib_model(spark_context, model, mnist_data):
 
     # Initialize SparkModel from Keras model and Spark context
     spark_model = SparkMLlibModel(
-        model=model, frequency='epoch', mode='synchronous')
+        model=classification_model, frequency='epoch', mode='synchronous')
 
     # Train Spark model
     spark_model.fit(lp_rdd, epochs=5, batch_size=32, verbose=0,

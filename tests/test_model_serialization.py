@@ -8,10 +8,10 @@ from keras.layers import Dense, Dropout, Activation, Input
 from elephas.spark_model import SparkModel
 
 
-def test_sequential_serialization(spark_context, model):
-    model.compile(
+def test_sequential_serialization(spark_context, classification_model):
+    classification_model.compile(
         optimizer="sgd", loss="categorical_crossentropy", metrics=["acc"])
-    spark_model = SparkModel(model, frequency='epoch', mode='synchronous')
+    spark_model = SparkModel(classification_model, frequency='epoch', mode='synchronous')
     spark_model.save("elephas_sequential.h5")
 
 
