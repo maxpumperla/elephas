@@ -106,7 +106,7 @@ def test_functional_model(spark_context, classification_model_functional, mnist_
 
 def test_regression_model(spark_context, regression_model, boston_housing_dataset):
     batch_size = 64
-    epochs = 100
+    epochs = 10
 
     x_train, y_train, x_test, y_test = boston_housing_dataset
     df = to_data_frame(spark_context, x_train, y_train)
