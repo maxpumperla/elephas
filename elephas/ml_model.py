@@ -1,4 +1,5 @@
-from __future__ import absolute_import, print_function
+from enum import Enum
+from typing import Union
 
 import keras
 import numpy as np
@@ -7,13 +8,12 @@ import h5py
 import json
 
 from pyspark.ml.param.shared import HasOutputCol, HasFeaturesCol, HasLabelCol
-from pyspark import keyword_only
+from pyspark import keyword_only, RDD
 from pyspark.ml import Estimator, Model
 from pyspark.sql.types import StringType, DoubleType, StructField
 
 from keras.models import model_from_yaml
 from keras.optimizers import get as get_optimizer
-
 
 from .spark_model import SparkModel
 from .utils.rdd_utils import from_vector
@@ -31,6 +31,7 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
 
     Returns a trained model in form of a SparkML Model, which is also a Transformer.
     """
+
     @keyword_only
     def __init__(self, **kwargs):
         super(ElephasEstimator, self).__init__()
@@ -100,7 +101,8 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
         return ElephasTransformer(labelCol=self.getLabelCol(),
                                   outputCol='prediction',
                                   keras_model_config=spark_model.master_network.to_yaml(),
-                                  weights=weights)
+                                  weights=weights,
+                                  loss=loss)
 
 
 def load_ml_estimator(file_name):
@@ -114,12 +116,16 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol):
     """SparkML Transformer implementation. Contains a trained model,
     with which new feature data can be transformed into labels.
     """
+
     @keyword_only
     def __init__(self, **kwargs):
         super(ElephasTransformer, self).__init__()
         if "weights" in kwargs.keys():
             # Strip model weights from parameters to init Transformer
             self.weights = kwargs.pop('weights')
+        if "loss" in kwargs.keys():
+            # Extract loss from parameters
+            self.model_type = LossModelTypeMapper().get_model_type(kwargs.pop('loss'))
         self.set_params(**kwargs)
 
     @keyword_only
@@ -156,20 +162,12 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol):
         new_schema.add(StructField(output_col, StringType(), True))
 
         rdd = df.rdd.coalesce(1)
-        features = np.asarray(
-            rdd.map(lambda x: from_vector(x.features)).collect())
+        features = np.asarray(rdd.map(lambda x: from_vector(x.features)).collect())
         # Note that we collect, since executing this on the rdd would require model serialization once again
         model = model_from_yaml(self.get_keras_model_config())
         model.set_weights(self.weights.value)
-        if isinstance(model, keras.engine.Model):
-            # account for functional model users
-            predict_function = lambda x: model.predict(x).argmax(axis=-1)
-        else:
-            predict_function = model.predict_classes
-        predictions = rdd.ctx.parallelize(predict_function(features)).coalesce(1)
-        predictions = predictions.map(lambda x: tuple(str(x)))
 
-        results_rdd = rdd.zip(predictions).map(lambda x: x[0] + x[1])
+        results_rdd = compute_predictions(model, self.model_type, rdd, features)
         results_df = df.sql_ctx.createDataFrame(results_rdd, new_schema)
         results_df = results_df.withColumn(
             output_col, results_df[output_col].cast(DoubleType()))
@@ -184,3 +182,69 @@ def load_ml_transformer(file_name):
     elephas_conf = json.loads(f.attrs.get('distributed_config'))
     config = elephas_conf.get('config')
     return ElephasTransformer(**config)
+
+
+class ModelType(Enum):
+    CLASSIFICATION = 1
+    REGRESSION = 2
+
+
+class LossModelTypeMapper:
+    """
+    Mapper for losses -> model type
+    """
+    _instance = None
+
+    class __LossModelTypeMapper:
+        def __init__(self):
+            loss_to_model_type = {}
+            loss_to_model_type.update(
+                {'mean_squared_error': ModelType.REGRESSION,
+                 'mean_absolute_error': ModelType.REGRESSION,
+                 'mse': ModelType.REGRESSION,
+                 'mae': ModelType.REGRESSION,
+                 'cosine_proximity': ModelType.REGRESSION,
+                 'mean_absolute_percentage_error': ModelType.REGRESSION,
+                 'mean_squared_logarithmic_error': ModelType.REGRESSION,
+                 'logcosh': ModelType.REGRESSION,
+                 'binary_crossentropy': ModelType.CLASSIFICATION,
+                 'categorical_crossentropy': ModelType.CLASSIFICATION,
+                 'sparse_categorical_crossentropy': ModelType.CLASSIFICATION})
+            self.__mapping = loss_to_model_type
+
+        def get_model_type(self, loss: str):
+            return self.__mapping.get(loss)
+
+        def register_loss(self, loss: Union[str, callable], model_type: ModelType):
+            if callable(loss):
+                loss = loss.__name__
+            self.__mapping.update({loss: model_type})
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = LossModelTypeMapper.__LossModelTypeMapper()
+        return cls._instance
+
+
+def compute_predictions(model: keras.models.Model, model_type: ModelType, rdd: RDD, features: np.array):
+    predict_function = determine_predict_function(model, model_type)
+    predictions = rdd.ctx.parallelize(predict_function(features)).coalesce(1)
+    if model_type == ModelType.CLASSIFICATION:
+        predictions = predictions.map(lambda x: tuple(str(x)))
+    else:
+        predictions = predictions.map(lambda x: tuple([float(x)]))
+    results_rdd = rdd.zip(predictions).map(lambda x: x[0] + x[1])
+    return results_rdd
+
+
+def determine_predict_function(model: keras.models.Model,
+                               model_type: ModelType):
+    if model_type == ModelType.CLASSIFICATION:
+        if isinstance(model, keras.models.Sequential):
+            predict_function = model.predict_classes
+        else:
+            predict_function = lambda x: model.predict(x).argmax(axis=-1)
+    else:
+        predict_function = model.predict
+
+    return predict_function
