@@ -243,6 +243,7 @@ def determine_predict_function(model: keras.models.Model,
         if isinstance(model, keras.models.Sequential):
             predict_function = model.predict_classes
         else:
+            # support for functional API
             predict_function = lambda x: model.predict(x).argmax(axis=-1)
     else:
         predict_function = model.predict
