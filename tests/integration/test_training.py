@@ -1,6 +1,3 @@
-from __future__ import absolute_import
-from __future__ import print_function
-
 from keras.optimizers import SGD
 
 from elephas.spark_model import SparkModel

@@ -1,5 +1,3 @@
-from __future__ import print_function
-from __future__ import absolute_import
 from hyperopt import Trials, rand
 from hyperas.ensemble import VotingModel
 from hyperas.optim import get_hyperopt_model_string, base_minimizer

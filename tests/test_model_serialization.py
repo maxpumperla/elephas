@@ -1,9 +1,7 @@
-from __future__ import absolute_import
-from __future__ import print_function
 import pytest
 
-from keras.models import Sequential, Model
-from keras.layers import Dense, Dropout, Activation, Input
+from keras.models import Model
+from keras.layers import Dense, Input
 
 from elephas.spark_model import SparkModel
 
