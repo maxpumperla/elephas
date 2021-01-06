@@ -237,8 +237,8 @@ def compute_predictions(model, model_type, rdd, features):
     return results_rdd
 
 
-def determine_predict_function(model: keras.models.Model,
-                               model_type: ModelType):
+def determine_predict_function(model,
+                               model_type):
     if model_type == ModelType.CLASSIFICATION:
         if isinstance(model, keras.models.Sequential):
             predict_function = model.predict_classes
