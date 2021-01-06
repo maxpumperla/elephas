@@ -194,8 +194,9 @@ class LossModelTypeMapper:
     """
     _instance = None
 
-    class __LossModelTypeMapper:
-        def __init__(self):
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(LossModelTypeMapper, cls).__new__(cls)
             loss_to_model_type = {}
             loss_to_model_type.update(
                 {'mean_squared_error': ModelType.REGRESSION,
@@ -209,20 +210,16 @@ class LossModelTypeMapper:
                  'binary_crossentropy': ModelType.CLASSIFICATION,
                  'categorical_crossentropy': ModelType.CLASSIFICATION,
                  'sparse_categorical_crossentropy': ModelType.CLASSIFICATION})
-            self.__mapping = loss_to_model_type
-
-        def get_model_type(self, loss):
-            return self.__mapping.get(loss)
-
-        def register_loss(self, loss, model_type):
-            if callable(loss):
-                loss = loss.__name__
-            self.__mapping.update({loss: model_type})
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = LossModelTypeMapper.__LossModelTypeMapper()
+            cls._instance.__mapping = loss_to_model_type
         return cls._instance
+
+    def get_model_type(self, loss):
+        return self.__mapping.get(loss)
+
+    def register_loss(self, loss, model_type):
+        if callable(loss):
+            loss = loss.__name__
+        self.__mapping.update({loss: model_type})
 
 
 def compute_predictions(model, model_type, rdd, features):
