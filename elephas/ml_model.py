@@ -215,7 +215,7 @@ class LossModelTypeMapper:
         def get_model_type(self, loss):
             return self.__mapping.get(loss)
 
-        def register_loss(self, loss: Union[str, callable], model_type: ModelType):
+        def register_loss(self, loss, model_type):
             if callable(loss):
                 loss = loss.__name__
             self.__mapping.update({loss: model_type})
