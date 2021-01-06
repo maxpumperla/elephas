@@ -212,7 +212,7 @@ class LossModelTypeMapper:
                  'sparse_categorical_crossentropy': ModelType.CLASSIFICATION})
             self.__mapping = loss_to_model_type
 
-        def get_model_type(self, loss: str):
+        def get_model_type(self, loss):
             return self.__mapping.get(loss)
 
         def register_loss(self, loss: Union[str, callable], model_type: ModelType):
@@ -226,7 +226,7 @@ class LossModelTypeMapper:
         return cls._instance
 
 
-def compute_predictions(model: keras.models.Model, model_type: ModelType, rdd: RDD, features: np.array):
+def compute_predictions(model, model_type, rdd, features):
     predict_function = determine_predict_function(model, model_type)
     predictions = rdd.ctx.parallelize(predict_function(features)).coalesce(1)
     if model_type == ModelType.CLASSIFICATION:
