@@ -188,30 +188,39 @@ class ModelType(Enum):
     REGRESSION = 2
 
 
-class LossModelTypeMapper:
+class _Singleton(type):
+    """ A metaclass that creates a Singleton base class when called. """
+    _instances = {}
+
+    def __call__(cls, *args):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(_Singleton, cls).__call__(*args)
+        return cls._instances[cls]
+
+
+class Singleton(_Singleton('SingletonMeta', (object,), {})):
+    pass
+
+
+class LossModelTypeMapper(Singleton):
     """
     Mapper for losses -> model type
     """
-    _instance = None
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(LossModelTypeMapper, cls).__new__(cls)
-            loss_to_model_type = {}
-            loss_to_model_type.update(
-                {'mean_squared_error': ModelType.REGRESSION,
-                 'mean_absolute_error': ModelType.REGRESSION,
-                 'mse': ModelType.REGRESSION,
-                 'mae': ModelType.REGRESSION,
-                 'cosine_proximity': ModelType.REGRESSION,
-                 'mean_absolute_percentage_error': ModelType.REGRESSION,
-                 'mean_squared_logarithmic_error': ModelType.REGRESSION,
-                 'logcosh': ModelType.REGRESSION,
-                 'binary_crossentropy': ModelType.CLASSIFICATION,
-                 'categorical_crossentropy': ModelType.CLASSIFICATION,
-                 'sparse_categorical_crossentropy': ModelType.CLASSIFICATION})
-            cls._instance.__mapping = loss_to_model_type
-        return cls._instance
+    def __init__(self):
+        loss_to_model_type = {}
+        loss_to_model_type.update(
+            {'mean_squared_error': ModelType.REGRESSION,
+             'mean_absolute_error': ModelType.REGRESSION,
+             'mse': ModelType.REGRESSION,
+             'mae': ModelType.REGRESSION,
+             'cosine_proximity': ModelType.REGRESSION,
+             'mean_absolute_percentage_error': ModelType.REGRESSION,
+             'mean_squared_logarithmic_error': ModelType.REGRESSION,
+             'logcosh': ModelType.REGRESSION,
+             'binary_crossentropy': ModelType.CLASSIFICATION,
+             'categorical_crossentropy': ModelType.CLASSIFICATION,
+             'sparse_categorical_crossentropy': ModelType.CLASSIFICATION})
+        self.__mapping = loss_to_model_type
 
     def get_model_type(self, loss):
         return self.__mapping.get(loss)
