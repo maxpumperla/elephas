@@ -4,6 +4,6 @@ Keras==2.2.5
 numpy==1.19.4
 pyspark==2.4.5
 six==1.11.0
-tensorflow==1.15.4
+tensorflow>=1.15
 pydl4j>=0.1.3
 h5py==2.10.0
