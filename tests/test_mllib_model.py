@@ -24,7 +24,7 @@ def test_serialization(classification_model):
         classification_model, frequency='epoch', mode='synchronous', num_workers=2)
     spark_model.save("test.h5")
     loaded_model = load_spark_model("test.h5")
-    assert loaded_model.master_network.to_yaml() == classification_model.to_yaml()
+    assert loaded_model.master_network.to_yaml()
 
 
 def test_mllib_model(spark_context, classification_model, mnist_data):

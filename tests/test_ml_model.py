@@ -14,7 +14,7 @@ def test_serialization_transformer(classification_model):
     transformer.set_keras_model_config(classification_model.to_yaml())
     transformer.save("test.h5")
     loaded_model = load_ml_transformer("test.h5")
-    assert loaded_model.get_model().to_yaml()
+    assert loaded_model.get_model().to_yaml() == classification_model.to_yaml()
 
 
 def test_serialization_estimator(classification_model):
