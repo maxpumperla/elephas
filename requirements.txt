@@ -1,6 +1,6 @@
 Flask==1.0.2
 hyperas==0.4
-Keras==2.2.4
+Keras==2.2.5
 numpy==1.19.4
 pyspark==2.4.5
 six==1.11.0
