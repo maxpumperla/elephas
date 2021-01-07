@@ -1,6 +1,3 @@
-This project is now archived. It's been fun working on it, but it's time for me to move on. Thank you for all the support and feedback over the last couple of years. If someone is interested in taking ownership, let's discuss. :v:
----
-
 # Elephas: Distributed Deep Learning with Keras & Spark 
 
 ![Elephas](https://github.com/maxpumperla/elephas/blob/master/elephas-logo.png)
