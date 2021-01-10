@@ -23,7 +23,7 @@ def test_training_modes_classification(spark_context, mode, mnist_data, classifi
     # Build RDD from numpy features and labels
     rdd = to_simple_rdd(spark_context, x_train, y_train)
 
-    # Initialize SparkModel from tensorflow.keras model and Spark context
+    # Initialize SparkModel from keras model and Spark context
     spark_model = SparkModel(classification_model, frequency='epoch', mode=mode)
 
     # Train Spark model
@@ -32,7 +32,7 @@ def test_training_modes_classification(spark_context, mode, mnist_data, classifi
     # Evaluate Spark model by evaluating the underlying model
     score = spark_model.master_network.evaluate(x_test, y_test, verbose=2)
 
-    assert score[1]
+    assert score
 
 
 @pytest.mark.parametrize('mode', ['synchronous', 'asynchronous', 'hogwild'])
@@ -51,4 +51,4 @@ def test_training_modes_regression(spark_context, mode, boston_housing_dataset, 
     spark_model.fit(rdd, epochs=epochs, batch_size=batch_size,
                     verbose=0, validation_split=0.1)
     score = spark_model.master_network.evaluate(x_test, y_test, verbose=2)
-    assert score[1]
+    assert score
