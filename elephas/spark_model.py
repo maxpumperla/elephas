@@ -1,9 +1,9 @@
 import pyspark
 import h5py
 import json
-from keras.optimizers import serialize as serialize_optimizer
-from keras.optimizers import get as get_optimizer
-from keras.models import load_model
+from tensorflow.keras.optimizers import serialize as serialize_optimizer
+from tensorflow.keras.optimizers import get as get_optimizer
+from tensorflow.keras.models import load_model
 
 from .utils import subtract_params
 from .utils import lp_to_simple_rdd
@@ -38,7 +38,7 @@ class SparkModel(object):
         if not hasattr(model, "loss"):
             raise Exception(
                 "Compile your Keras model before initializing an Elephas model with it")
-        metrics = model.metrics
+        metrics = [metric.name for metric in model.metrics]
         loss = model.loss
         optimizer = serialize_optimizer(model.optimizer)
 

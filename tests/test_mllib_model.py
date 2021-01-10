@@ -1,13 +1,8 @@
-from keras.datasets import mnist
-from keras.models import Sequential
-from keras.layers.core import Dense, Dropout, Activation
-from keras.optimizers import RMSprop
-from keras.utils import np_utils
+
+from tensorflow.keras.optimizers import RMSprop
 
 from elephas.spark_model import SparkMLlibModel, load_spark_model
 from elephas.utils.rdd_utils import to_labeled_point
-
-import pytest
 
 # Define basic parameters
 batch_size = 64
@@ -37,7 +32,7 @@ def test_mllib_model(spark_context, classification_model, mnist_data):
     lp_rdd = to_labeled_point(spark_context, x_train,
                               y_train, categorical=True)
 
-    # Initialize SparkModel from Keras model and Spark context
+    # Initialize SparkModel from tensorflow.keras model and Spark context
     spark_model = SparkMLlibModel(
         model=classification_model, frequency='epoch', mode='synchronous')
 

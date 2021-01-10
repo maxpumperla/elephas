@@ -1,5 +1,5 @@
 import pytest
-from keras import optimizers
+from tensorflow.keras import optimizers
 
 from elephas.ml_model import ElephasEstimator, load_ml_estimator, ElephasTransformer, load_ml_transformer, \
     ModelType, LossModelTypeMapper

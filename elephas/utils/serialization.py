@@ -1,4 +1,4 @@
-from keras.models import model_from_json
+from tensorflow.keras.models import model_from_json
 
 
 def model_to_dict(model):

@@ -1,8 +1,8 @@
-from keras.datasets import mnist
-from keras.models import Sequential
-from keras.layers.core import Dense, Dropout, Activation
-from keras.optimizers import SGD
-from keras.utils import np_utils
+from tensorflow.keras.datasets import mnist
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout, Activation
+from tensorflow.keras.optimizers import SGD
+from tensorflow.keras.utils import to_categorical
 
 from elephas.spark_model import SparkModel
 from elephas.utils.rdd_utils import to_simple_rdd
@@ -31,8 +31,8 @@ print(x_train.shape[0], 'train samples')
 print(x_test.shape[0], 'test samples')
 
 # Convert class vectors to binary class matrices
-y_train = np_utils.to_categorical(y_train, nb_classes)
-y_test = np_utils.to_categorical(y_test, nb_classes)
+y_train = to_categorical(y_train, nb_classes)
+y_test = to_categorical(y_test, nb_classes)
 
 model = Sequential()
 model.add(Dense(128, input_dim=784))
@@ -50,7 +50,7 @@ model.compile(sgd, 'categorical_crossentropy', ['acc'])
 # Build RDD from numpy features and labels
 rdd = to_simple_rdd(sc, x_train, y_train)
 
-# Initialize SparkModel from Keras model and Spark context
+# Initialize SparkModel from tensorflow.keras model and Spark context
 spark_model = SparkModel(model, mode='synchronous')
 
 # Train Spark model

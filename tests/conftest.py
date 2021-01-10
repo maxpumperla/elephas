@@ -1,8 +1,8 @@
 import pytest
-from keras import Sequential, Input, Model
-from keras.datasets import mnist, boston_housing
-from keras.layers import Dense, Activation, Dropout
-from keras.utils import np_utils
+from tensorflow.keras import Sequential, Input, Model
+from tensorflow.keras.datasets import mnist, boston_housing
+from tensorflow.keras.layers import Dense, Activation, Dropout
+from tensorflow.keras.utils import to_categorical
 
 
 @pytest.fixture
@@ -52,8 +52,8 @@ def mnist_data():
     x_test /= 255
 
     # Convert class vectors to binary class matrices
-    y_train = np_utils.to_categorical(y_train, 10)
-    y_test = np_utils.to_categorical(y_test, 10)
+    y_train = to_categorical(y_train, 10)
+    y_test = to_categorical(y_test, 10)
     return x_train, y_train, x_test, y_test
 
 

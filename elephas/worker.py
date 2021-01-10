@@ -1,8 +1,8 @@
 import numpy as np
 from itertools import tee
-from keras.utils.generic_utils import slice_arrays
-from keras.models import model_from_yaml
-from keras.optimizers import get as get_optimizer
+from tensorflow.keras.models import model_from_yaml
+from tensorflow.keras.optimizers import get as get_optimizer
+from tensorflow.python.keras.utils.generic_utils import slice_arrays
 
 from .utils import subtract_params
 from .parameter import SocketClient, HttpClient

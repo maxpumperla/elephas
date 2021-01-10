@@ -2,7 +2,7 @@ from hyperopt import Trials, rand
 from hyperas.ensemble import VotingModel
 from hyperas.optim import get_hyperopt_model_string, base_minimizer
 import numpy as np
-from keras.models import model_from_yaml
+from tensorflow.keras.models import model_from_yaml
 import six.moves.cPickle as pickle
 from six.moves import range
 # depend on hyperas, boto etc. is optional

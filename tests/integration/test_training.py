@@ -1,4 +1,4 @@
-from keras.optimizers import SGD
+from tensorflow.keras.optimizers import SGD
 
 from elephas.spark_model import SparkModel
 from elephas.utils.rdd_utils import to_simple_rdd
@@ -23,7 +23,7 @@ def test_training_modes_classification(spark_context, mode, mnist_data, classifi
     # Build RDD from numpy features and labels
     rdd = to_simple_rdd(spark_context, x_train, y_train)
 
-    # Initialize SparkModel from Keras model and Spark context
+    # Initialize SparkModel from tensorflow.keras model and Spark context
     spark_model = SparkModel(classification_model, frequency='epoch', mode=mode)
 
     # Train Spark model
