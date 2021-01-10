@@ -5,7 +5,7 @@ from elephas.ml_model import ElephasEstimator, load_ml_estimator, ElephasTransfo
     ModelType, LossModelTypeMapper
 from elephas.ml.adapter import to_data_frame
 
-from pyspark.mllib.evaluation import MulticlassMetrics
+from pyspark.mllib.evaluation import MulticlassMetrics, RegressionMetrics
 from pyspark.ml import Pipeline
 
 
@@ -65,8 +65,7 @@ def test_spark_ml_model_classification(spark_context, classification_model, mnis
 
     prediction_and_label = pnl.rdd.map(lambda row: (row.label, row.prediction))
     metrics = MulticlassMetrics(prediction_and_label)
-    print(metrics.precision())
-    print(metrics.recall())
+    print(metrics.accuracy)
 
 
 def test_functional_model(spark_context, classification_model_functional, mnist_data):
@@ -100,8 +99,7 @@ def test_functional_model(spark_context, classification_model_functional, mnist_
 
     prediction_and_label = pnl.rdd.map(lambda row: (row.label, row.prediction))
     metrics = MulticlassMetrics(prediction_and_label)
-    print(metrics.precision())
-    print(metrics.recall())
+    print(metrics.accuracy)
 
 
 def test_regression_model(spark_context, regression_model, boston_housing_dataset):
@@ -131,10 +129,9 @@ def test_regression_model(spark_context, regression_model, boston_housing_datase
     pnl = prediction.select("label", "prediction")
     pnl.show(100)
 
-    prediction_and_label = pnl.rdd.map(lambda row: (row.label, row.prediction))
-    metrics = MulticlassMetrics(prediction_and_label)
-    print(metrics.precision())
-    print(metrics.recall())
+    prediction_and_observations = pnl.rdd.map(lambda row: (row.label, row.prediction))
+    metrics = RegressionMetrics(prediction_and_observations)
+    print(metrics.r2)
 
 
 @pytest.mark.parametrize('loss, model_type', [('binary_crossentropy', ModelType.CLASSIFICATION),
