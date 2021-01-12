@@ -53,10 +53,15 @@ class AsynchronousSparkWorker(object):
     """Asynchronous Spark worker. This code will be executed on workers.
     """
 
-    def __init__(self, yaml, parameters, parameter_server_mode, train_config, frequency,
+    def __init__(self, yaml, parameters, client, train_config, frequency,
                  master_optimizer, master_loss, master_metrics, custom_objects):
 
-        self.client = BaseParameterClient.get_client(parameter_server_mode)
+        if isinstance(client, BaseParameterClient):
+            # either supply a client object directly
+            self.client = client
+        else:
+            # or a string to create a client
+            self.client = BaseParameterClient.get_client(client)
 
         self.train_config = train_config
         self.frequency = frequency

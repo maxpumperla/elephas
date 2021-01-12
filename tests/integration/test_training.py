@@ -52,3 +52,33 @@ def test_training_modes_regression(spark_context, mode, boston_housing_dataset, 
                     verbose=0, validation_split=0.1)
     score = spark_model.master_network.evaluate(x_test, y_test, verbose=2)
     assert score
+
+
+def test_training_asynchronous_socket(spark_context, mnist_data, classification_model):
+    # Define basic parameters
+    batch_size = 64
+    epochs = 10
+
+    # Load data
+    x_train, y_train, x_test, y_test = mnist_data
+    x_train = x_train[:1000]
+    y_train = y_train[:1000]
+
+    sgd = SGD(lr=0.1)
+    classification_model.compile(sgd, 'categorical_crossentropy', ['acc'])
+
+    # Build RDD from numpy features and labels
+    rdd = to_simple_rdd(spark_context, x_train, y_train)
+
+    # Initialize SparkModel from keras model and Spark context
+    spark_model = SparkModel(classification_model, frequency='epoch',
+                             mode='asynchronous', parameter_server_mode='socket')
+
+    # Train Spark model
+    spark_model.fit(rdd, epochs=epochs, batch_size=batch_size,
+                    verbose=0, validation_split=0.1)
+    # Evaluate Spark model by evaluating the underlying model
+    score = spark_model.master_network.evaluate(x_test, y_test, verbose=2)
+
+    assert score
+

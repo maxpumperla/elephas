@@ -5,13 +5,13 @@ from tensorflow.keras.optimizers import serialize as serialize_optimizer
 from tensorflow.keras.optimizers import get as get_optimizer
 from tensorflow.keras.models import load_model
 
+from .parameter.client import _socket
+from .parameter.factory import ClientServerFactory
 from .utils import subtract_params
 from .utils import lp_to_simple_rdd
 from .utils import model_to_dict
 from .mllib import to_matrix, from_matrix, to_vector, from_vector
 from .worker import AsynchronousSparkWorker, SparkWorker
-from .parameter import HttpServer, SocketServer
-from .parameter import HttpClient, SocketClient
 
 
 class SparkModel(object):
@@ -62,16 +62,9 @@ class SparkModel(object):
 
         self.serialized_model = model_to_dict(model)
         if self.mode is not 'synchronous':
-            if self.parameter_server_mode == 'http':
-                self.parameter_server = HttpServer(
-                    self.serialized_model, self.mode, self.port)
-                self.client = HttpClient(self.port)
-            elif self.parameter_server_mode == 'socket':
-                self.parameter_server = SocketServer(self.serialized_model)
-                self.client = SocketClient()
-            else:
-                raise ValueError("Parameter server mode has to be either `http` or `socket`, "
-                                 "got {}".format(self.parameter_server_mode))
+            factory = ClientServerFactory.get_factory(self.parameter_server_mode)
+            self.parameter_server = factory.create_server(self.serialized_model, self.port, mode=self.mode)
+            self.client = factory.create_client(self.port)
 
     @staticmethod
     def get_train_config(epochs, batch_size, verbose, validation_split):
@@ -161,7 +154,6 @@ class SparkModel(object):
             self.start_server()
         train_config = self.get_train_config(
             epochs, batch_size, verbose, validation_split)
-        mode = self.parameter_server_mode
         freq = self.frequency
         optimizer = self.master_optimizer
         loss = self.master_loss
@@ -175,7 +167,7 @@ class SparkModel(object):
         if self.mode in ['asynchronous', 'hogwild']:
             print('>>> Initialize workers')
             worker = AsynchronousSparkWorker(
-                yaml, parameters, mode, train_config, freq, optimizer, loss, metrics, custom)
+                yaml, parameters, self.client, train_config, freq, optimizer, loss, metrics, custom)
             print('>>> Distribute load')
             rdd.mapPartitions(worker.train).collect()
             print('>>> Async training complete.')

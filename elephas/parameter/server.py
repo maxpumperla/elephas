@@ -11,6 +11,9 @@ from elephas.utils.serialization import dict_to_model
 from elephas.utils.rwlock import RWLock as Lock
 from elephas.utils.notebook_utils import is_running_in_notebook
 from elephas.utils import subtract_params
+import structlog
+
+_LOGGER = structlog.get_logger(__name__)
 
 
 class BaseParameterServer(object):
@@ -19,10 +22,10 @@ class BaseParameterServer(object):
     Parameter servers can be started and stopped. Server implementations have
     to cater to the needs of their respective BaseParameterClient instances.
     """
-    __metaclass__ = abc.ABCMeta
 
-    def __init__(self):
-        raise NotImplementedError
+    def __init__(self, model, port, **kwargs):
+        self.master_network = dict_to_model(model)
+        self.port = port
 
     @abc.abstractmethod
     def start(self):
@@ -45,8 +48,7 @@ class HttpServer(BaseParameterServer):
     POST updates.
     """
 
-    def __init__(self, model, mode, port=4000, debug=True,
-                 threaded=True, use_reloader=False):
+    def __init__(self, model, port, **kwargs):
         """Initializes and HTTP server from a serialized Keras model
         a parallelisation mode and a port to run the Flask application on. In
         hogwild mode no read- or write-locks will be acquired, in asynchronous
@@ -60,20 +62,18 @@ class HttpServer(BaseParameterServer):
         :param use_reloader: boolean, Flask `use_reloader` argument
         """
 
-        self.master_network = dict_to_model(model)
-        self.mode = mode
+        super().__init__(model, port, **kwargs)
+        self.mode = kwargs.get('mode')
         self.master_url = None
-
-        self.port = port
 
         if is_running_in_notebook():
             self.threaded = False
             self.use_reloader = False
             self.debug = False
         else:
-            self.debug = debug
-            self.threaded = threaded
-            self.use_reloader = use_reloader
+            self.debug = kwargs.get("debug", True)
+            self.threaded = kwargs.get("threaded", True)
+            self.use_reloader = kwargs.get("use_reloader", False)
 
         self.lock = Lock()
         self.pickled_weights = None
@@ -145,7 +145,7 @@ class SocketServer(BaseParameterServer):
 
     """
 
-    def __init__(self, model, port=4000):
+    def __init__(self, model, port, **kwargs):
         """Initializes a Socket server instance from a serializer Keras model
         and a port to listen to.
 
@@ -153,8 +153,7 @@ class SocketServer(BaseParameterServer):
         :param port: int, port to run the socket on
         """
 
-        self.model = dict_to_model(model)
-        self.port = port
+        super().__init__(model, port, **kwargs)
         self.socket = None
         self.runs = False
         self.connections = []
@@ -175,7 +174,9 @@ class SocketServer(BaseParameterServer):
     def start_server(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        sock.bind(('0.0.0.0', self.port))
+        master_url = determine_master(port=self.port).split(':')[0]
+        host = master_url.split(':')[0]
+        sock.bind((host, self.port))
         sock.listen(5)
         self.socket = sock
         self.runs = True
@@ -190,7 +191,8 @@ class SocketServer(BaseParameterServer):
             self.socket.close()
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
-                sock.connect(("localhost", self.port))
+                host = determine_master(port=self.port).split(':')[0]
+                sock.connect((host, self.port))
                 sock.close()
             except Exception:
                 pass
@@ -200,14 +202,16 @@ class SocketServer(BaseParameterServer):
     def update_parameters(self, conn):
         data = receive(conn)
         delta = data['delta']
-        with self.lock:
-            weights = self.model.get_weights() + delta
-            self.model.set_weights(weights)
+        self.lock.acquire_write()
+        weights = self.master_network.get_weights() + delta
+        self.master_network.set_weights(weights)
+        self.lock.release()
 
     def get_parameters(self, conn):
-        with self.lock:
-            weights = self.model.get_weights()
+        self.lock.acquire_read()
+        weights = self.master_network.get_weights()
         send(conn, weights)
+        self.lock.release()
 
     def action_listener(self, conn):
         while self.runs:
@@ -217,14 +221,11 @@ class SocketServer(BaseParameterServer):
             elif get_or_update == 'g':
                 self.get_parameters(conn)
             else:
-                raise ValueError('Received invalid action')
+                print("Unknown action: ", get_or_update)
 
     def run(self):
         while self.runs:
-            try:
-                conn, addr = self.socket.accept()
-                thread = Thread(target=self.action_listener, args=(conn, addr))
-                thread.start()
-                self.connections.append(thread)
-            except Exception:
-                print("Failed to set up socket connection.")
+            conn, addr = self.socket.accept()
+            with conn:
+                self.action_listener(conn)
+

@@ -2,9 +2,14 @@ from __future__ import absolute_import
 from __future__ import print_function
 
 import abc
+from functools import lru_cache
+
 import numpy as np
 import socket
 import six.moves.cPickle as pickle
+
+from . import HttpServer, SocketServer
+
 try:
     import urllib.request as urllib2
 except ImportError:
@@ -13,15 +18,19 @@ except ImportError:
 from ..utils.sockets import determine_master, send, receive
 
 
+def _socket(port):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    host = determine_master(port=port).split(':')[0]
+    sock.connect((host, port))
+    return sock
+
+
 class BaseParameterClient(abc.ABC):
     """BaseParameterClient
     Parameter-server clients can do two things: retrieve the current parameters
     from the corresponding server, and send updates (`delta`) to the server.
     """
     client_type = 'base'
-
-    def __init__(self, *args):
-        raise NotImplementedError
 
     @classmethod
     def get_client(cls, client_type, port=4000):
@@ -50,10 +59,10 @@ class HttpClient(BaseParameterClient):
     namely HttpServer. The HTTP server provides two endpoints, `/parameters` to
     get parameters and `/update` to update the server's parameters.
     """
+
     client_type = 'http'
 
     def __init__(self, port=4000):
-
         self.master_url = determine_master(port=port)
         self.headers = {'Content-Type': 'application/elephas'}
 
@@ -78,16 +87,18 @@ class SocketClient(BaseParameterClient):
     client_type = 'socket'
 
     def __init__(self, port=4000):
-        self.master_url = determine_master(port=port)
-        host = self.master_url.split(':')[0]
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect((host, port))
+        self.port = port
 
     def get_parameters(self):
-        self.socket.sendall(b'g')
-        return np.asarray(receive(self.socket))
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            host = determine_master(port=self.port).split(':')[0]
+            sock.connect((host, self.port))
+            sock.sendall(b'g')
+            data = np.asarray(receive(sock))
+        return data
 
     def update_parameters(self, delta):
-        data = {'delta': delta}
-        self.socket.sendall(b'u')
-        send(self.socket, data)
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            data = {'delta': delta}
+            sock.sendall(b'u')
+            send(sock, data)
