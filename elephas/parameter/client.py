@@ -13,13 +13,6 @@ except ImportError:
 from ..utils.sockets import determine_master, send, receive
 
 
-def _socket(port):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    host = determine_master(port=port).split(':')[0]
-    sock.connect((host, port))
-    return sock
-
-
 class BaseParameterClient(abc.ABC):
     """BaseParameterClient
     Parameter-server clients can do two things: retrieve the current parameters

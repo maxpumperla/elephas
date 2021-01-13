@@ -59,7 +59,6 @@ def test_training_asynchronous_socket(spark_context, mode, mnist_data, classific
     # Define basic parameters
     batch_size = 64
     epochs = 10
-
     # Load data
     x_train, y_train, x_test, y_test = mnist_data
     x_train = x_train[:1000]
