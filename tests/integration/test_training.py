@@ -73,7 +73,7 @@ def test_training_asynchronous_socket(spark_context, mode, mnist_data, classific
 
     # Initialize SparkModel from keras model and Spark context
     spark_model = SparkModel(classification_model, frequency='epoch',
-                             mode=mode, parameter_server_mode='socket')
+                             mode=mode, parameter_server_mode='socket', port=4001)
 
     # Train Spark model
     spark_model.fit(rdd, epochs=epochs, batch_size=batch_size,
