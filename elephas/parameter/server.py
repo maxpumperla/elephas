@@ -11,9 +11,6 @@ from elephas.utils.serialization import dict_to_model
 from elephas.utils.rwlock import RWLock as Lock
 from elephas.utils.notebook_utils import is_running_in_notebook
 from elephas.utils import subtract_params
-import structlog
-
-_LOGGER = structlog.get_logger(__name__)
 
 
 class BaseParameterServer(object):
@@ -202,9 +199,10 @@ class SocketServer(BaseParameterServer):
     def update_parameters(self, conn):
         data = receive(conn)
         delta = data['delta']
+        weights = self.master_network.get_weights()
         self.lock.acquire_write()
-        weights = self.master_network.get_weights() + delta
-        self.master_network.set_weights(weights)
+        # apply the gradient
+        self.master_network.set_weights(subtract_params(weights, delta))
         self.lock.release()
 
     def get_parameters(self, conn):
@@ -220,12 +218,12 @@ class SocketServer(BaseParameterServer):
                 self.update_parameters(conn)
             elif get_or_update == 'g':
                 self.get_parameters(conn)
-            else:
-                print("Unknown action: ", get_or_update)
 
     def run(self):
         while self.runs:
             conn, addr = self.socket.accept()
-            with conn:
-                self.action_listener(conn)
+            thread = Thread(target=self.action_listener, args=(conn, ))
+            thread.start()
+            self.connections.append(thread)
+
 

@@ -99,6 +99,8 @@ class SocketClient(BaseParameterClient):
 
     def update_parameters(self, delta):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            host = determine_master(port=self.port).split(':')[0]
+            sock.connect((host, self.port))
             data = {'delta': delta}
             sock.sendall(b'u')
             send(sock, data)

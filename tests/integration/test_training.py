@@ -54,7 +54,8 @@ def test_training_modes_regression(spark_context, mode, boston_housing_dataset, 
     assert score
 
 
-def test_training_asynchronous_socket(spark_context, mnist_data, classification_model):
+@pytest.mark.parametrize('mode', ['asynchronous', 'hogwild'])
+def test_training_asynchronous_socket(spark_context, mode, mnist_data, classification_model):
     # Define basic parameters
     batch_size = 64
     epochs = 10
@@ -72,7 +73,7 @@ def test_training_asynchronous_socket(spark_context, mnist_data, classification_
 
     # Initialize SparkModel from keras model and Spark context
     spark_model = SparkModel(classification_model, frequency='epoch',
-                             mode='asynchronous', parameter_server_mode='socket')
+                             mode=mode, parameter_server_mode='socket')
 
     # Train Spark model
     spark_model.fit(rdd, epochs=epochs, batch_size=batch_size,
