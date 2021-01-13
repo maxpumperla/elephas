@@ -173,7 +173,6 @@ as functions, hyper-parameter ranges are defined through braces. See the hyperas
 this works.
 
 ```python
-from __future__ import print_function
 from hyperopt import STATUS_OK
 from hyperas.distributions import choice, uniform
 
