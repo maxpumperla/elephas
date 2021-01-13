@@ -5,7 +5,6 @@ from tensorflow.keras.optimizers import serialize as serialize_optimizer
 from tensorflow.keras.optimizers import get as get_optimizer
 from tensorflow.keras.models import load_model
 
-from .parameter.client import _socket
 from .parameter.factory import ClientServerFactory
 from .utils import subtract_params
 from .utils import lp_to_simple_rdd
