@@ -1,3 +1,4 @@
+sudo: required
 dist: bionic
 language: python
 python:
@@ -8,7 +9,8 @@ before_install:
   - sudo apt-get install -y openjdk-8-jdk --no-install-recommends
   - sudo update-java-alternatives -s java-1.8.0-openjdk-amd64
   - export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
-
+env:
+  - SPARK_LOCAL_IP=0.0.0.0
 install:
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
   - bash miniconda.sh -b -p $HOME/miniconda
