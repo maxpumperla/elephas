@@ -30,7 +30,7 @@ def _receive_all(socket, num_bytes):
     :return: received data
     """
 
-    buffer = ''
+    buffer = b''
     buffer_size = 0
     bytes_left = num_bytes
     while buffer_size < num_bytes:

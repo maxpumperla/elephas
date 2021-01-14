@@ -1,7 +1,5 @@
 import numpy as np
 from elephas.ml import adapter
-import pytest
-pytest.mark.usefixtures("spark_context")
 
 
 def test_to_data_frame(spark_context):

@@ -2,7 +2,6 @@ import pytest
 import numpy as np
 from elephas.utils import functional_utils
 
-pytest.mark.usefixtures("spark_context")
 
 
 def test_add_params():

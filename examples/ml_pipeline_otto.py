@@ -1,6 +1,3 @@
-from __future__ import print_function
-from __future__ import absolute_import
-
 from pyspark.ml.linalg import Vectors
 import numpy as np
 import random
@@ -10,9 +7,9 @@ from pyspark.sql import SQLContext
 from pyspark.ml.feature import StringIndexer, StandardScaler
 from pyspark.ml import Pipeline
 
-from keras import optimizers
-from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation
+from tensorflow.keras import optimizers
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout, Activation
 
 from elephas.ml_model import ElephasEstimator
 

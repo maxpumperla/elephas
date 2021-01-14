@@ -1,11 +1,8 @@
-from __future__ import absolute_import
-from __future__ import print_function
-
-from keras.datasets import mnist
-from keras.models import Sequential
-from keras.layers.core import Dense, Dropout, Activation
-from keras.utils import np_utils
-from keras import optimizers
+from tensorflow.keras.datasets import mnist
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout, Activation
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras import optimizers
 
 from elephas.ml_model import ElephasEstimator
 from elephas.ml.adapter import to_data_frame
@@ -33,8 +30,8 @@ print(x_train.shape[0], 'train samples')
 print(x_test.shape[0], 'test samples')
 
 # Convert class vectors to binary class matrices
-y_train = np_utils.to_categorical(y_train, nb_classes)
-y_test = np_utils.to_categorical(y_test, nb_classes)
+y_train = to_categorical(y_train, nb_classes)
+y_test = to_categorical(y_test, nb_classes)
 
 model = Sequential()
 model.add(Dense(128, input_dim=784))

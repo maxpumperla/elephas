@@ -1,30 +1,15 @@
-from __future__ import absolute_import
-from __future__ import print_function
 import pytest
 
-from keras.models import Sequential, Model
-from keras.layers import Dense, Dropout, Activation, Input
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Dense, Input
 
 from elephas.spark_model import SparkModel
 
 
-def test_sequential_serialization():
-    # Create Spark context
-    pytest.mark.usefixtures("spark_context")
-
-    seq_model = Sequential()
-    seq_model.add(Dense(128, input_dim=784))
-    seq_model.add(Activation('relu'))
-    seq_model.add(Dropout(0.2))
-    seq_model.add(Dense(128))
-    seq_model.add(Activation('relu'))
-    seq_model.add(Dropout(0.2))
-    seq_model.add(Dense(10))
-    seq_model.add(Activation('softmax'))
-
-    seq_model.compile(
+def test_sequential_serialization(spark_context, classification_model):
+    classification_model.compile(
         optimizer="sgd", loss="categorical_crossentropy", metrics=["acc"])
-    spark_model = SparkModel(seq_model, frequency='epoch', mode='synchronous')
+    spark_model = SparkModel(classification_model, frequency='epoch', mode='synchronous')
     spark_model.save("elephas_sequential.h5")
 
 
@@ -51,7 +36,7 @@ def test_model_serialization():
 
 @pytest.mark.skip(reason="not feasible on travis right now")
 def test_java_avg_serde():
-    from elephas.dl4j import ParameterAveragingModel, ParameterSharingModel
+    from elephas.dl4j import ParameterAveragingModel
 
     inputs = Input(shape=(784,))
     x = Dense(64, activation='relu')(inputs)
@@ -73,7 +58,7 @@ def test_java_avg_serde():
 
 @pytest.mark.skip(reason="not feasible on travis right now")
 def test_java_sharing_serde():
-    from elephas.dl4j import ParameterAveragingModel, ParameterSharingModel
+    from elephas.dl4j import ParameterSharingModel
 
     inputs = Input(shape=(784,))
     x = Dense(64, activation='relu')(inputs)
@@ -91,6 +76,3 @@ def test_java_sharing_serde():
                                         threshold_step=1e-5, collect_stats=False, save_file='temp.h5')
     spark_model.save("java_param_sharing_model.h5")
 
-
-if __name__ == '__main__':
-    pytest.main([__file__])

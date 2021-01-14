@@ -1,8 +1,5 @@
-import pytest
 import numpy as np
 from elephas.utils import rdd_utils
-
-pytest.mark.usefixtures("spark_context")
 
 
 def test_to_simple_rdd(spark_context):

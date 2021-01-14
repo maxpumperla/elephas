@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from pyspark.mllib.linalg import Matrices, Vectors
 
 

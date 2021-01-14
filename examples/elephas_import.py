@@ -2,7 +2,7 @@ from elephas.java import java_classes
 from elephas.dl4j import ParameterAveragingModel
 from elephas.utils import rdd_utils
 import keras
-from keras.utils import np_utils
+from tensorflow.keras.utils import to_categorical
 
 
 def main():
@@ -27,8 +27,8 @@ def main():
     x_test = x_test.astype("float64")
 
     # Convert class vectors to binary class matrices
-    y_train = np_utils.to_categorical(y_train, 10)
-    y_test = np_utils.to_categorical(y_test, 10)
+    y_train = to_categorical(y_train, 10)
+    y_test = to_categorical(y_test, 10)
     y_train = y_train.astype("float64")
     y_test = y_test.astype("float64")
     x_train /= 255

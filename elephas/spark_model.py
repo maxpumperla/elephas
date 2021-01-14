@@ -1,20 +1,16 @@
-from __future__ import absolute_import
-from __future__ import print_function
-
 import pyspark
 import h5py
 import json
-from keras.optimizers import serialize as serialize_optimizer
-from keras.optimizers import get as get_optimizer
-from keras.models import load_model
+from tensorflow.keras.optimizers import serialize as serialize_optimizer
+from tensorflow.keras.optimizers import get as get_optimizer
+from tensorflow.keras.models import load_model
 
+from .parameter.factory import ClientServerFactory
 from .utils import subtract_params
 from .utils import lp_to_simple_rdd
 from .utils import model_to_dict
 from .mllib import to_matrix, from_matrix, to_vector, from_vector
 from .worker import AsynchronousSparkWorker, SparkWorker
-from .parameter import HttpServer, SocketServer
-from .parameter import HttpClient, SocketClient
 
 
 class SparkModel(object):
@@ -41,7 +37,7 @@ class SparkModel(object):
         if not hasattr(model, "loss"):
             raise Exception(
                 "Compile your Keras model before initializing an Elephas model with it")
-        metrics = model.metrics
+        metrics = [metric.name for metric in model.metrics]
         loss = model.loss
         optimizer = serialize_optimizer(model.optimizer)
 
@@ -65,23 +61,9 @@ class SparkModel(object):
 
         self.serialized_model = model_to_dict(model)
         if self.mode is not 'synchronous':
-            if self.parameter_server_mode == 'http':
-                self.parameter_server = HttpServer(
-                    self.serialized_model, self.mode, self.port)
-                self.client = HttpClient(self.port)
-            elif self.parameter_server_mode == 'socket':
-                self.parameter_server = SocketServer(self.serialized_model)
-                self.client = SocketClient()
-            else:
-                raise ValueError("Parameter server mode has to be either `http` or `socket`, "
-                                 "got {}".format(self.parameter_server_mode))
-
-    @staticmethod
-    def get_train_config(epochs, batch_size, verbose, validation_split):
-        return {'epochs': epochs,
-                'batch_size': batch_size,
-                'verbose': verbose,
-                'validation_split': validation_split}
+            factory = ClientServerFactory.get_factory(self.parameter_server_mode)
+            self.parameter_server = factory.create_server(self.serialized_model, self.port, mode=self.mode)
+            self.client = factory.create_client(self.port)
 
     def get_config(self):
         base_config = {
@@ -131,8 +113,7 @@ class SparkModel(object):
         """
         return self._master_network.predict_classes(data)
 
-    def fit(self, rdd, epochs=10, batch_size=32,
-            verbose=0, validation_split=0.1):
+    def fit(self, rdd, **kwargs):
         """
         Train an elephas model on an RDD. The Keras model configuration as specified
         in the elephas model is sent to Spark workers, abd each worker will be trained
@@ -149,12 +130,12 @@ class SparkModel(object):
             rdd = rdd.repartition(self.num_workers)
 
         if self.mode in ['asynchronous', 'synchronous', 'hogwild']:
-            self._fit(rdd, epochs, batch_size, verbose, validation_split)
+            self._fit(rdd, **kwargs)
         else:
             raise ValueError(
                 "Choose from one of the modes: asynchronous, synchronous or hogwild")
 
-    def _fit(self, rdd, epochs, batch_size, verbose, validation_split):
+    def _fit(self, rdd, **kwargs):
         """Protected train method to make wrapping of modes easier
         """
         self._master_network.compile(optimizer=get_optimizer(self.master_optimizer),
@@ -162,9 +143,7 @@ class SparkModel(object):
                                      metrics=self.master_metrics)
         if self.mode in ['asynchronous', 'hogwild']:
             self.start_server()
-        train_config = self.get_train_config(
-            epochs, batch_size, verbose, validation_split)
-        mode = self.parameter_server_mode
+        train_config = kwargs
         freq = self.frequency
         optimizer = self.master_optimizer
         loss = self.master_loss
@@ -178,7 +157,7 @@ class SparkModel(object):
         if self.mode in ['asynchronous', 'hogwild']:
             print('>>> Initialize workers')
             worker = AsynchronousSparkWorker(
-                yaml, parameters, mode, train_config, freq, optimizer, loss, metrics, custom)
+                yaml, parameters, self.client, train_config, freq, optimizer, loss, metrics, custom)
             print('>>> Distribute load')
             rdd.mapPartitions(worker.train).collect()
             print('>>> Async training complete.')

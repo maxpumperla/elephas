@@ -1,11 +1,11 @@
 import numpy as np
 from itertools import tee
-from keras.utils.generic_utils import slice_arrays
-from keras.models import model_from_yaml
-from keras.optimizers import get as get_optimizer
+from tensorflow.keras.models import model_from_yaml
+from tensorflow.keras.optimizers import get as get_optimizer
+from tensorflow.python.keras.utils.generic_utils import slice_arrays
 
 from .utils import subtract_params
-from .parameter import SocketClient, HttpClient
+from .parameter import BaseParameterClient
 
 
 class SparkWorker(object):
@@ -53,16 +53,15 @@ class AsynchronousSparkWorker(object):
     """Asynchronous Spark worker. This code will be executed on workers.
     """
 
-    def __init__(self, yaml, parameters, parameter_server_mode, train_config, frequency,
+    def __init__(self, yaml, parameters, client, train_config, frequency,
                  master_optimizer, master_loss, master_metrics, custom_objects):
 
-        if parameter_server_mode == 'http':
-            self.client = HttpClient()
-        elif parameter_server_mode == 'socket':
-            self.client = SocketClient()
+        if isinstance(client, BaseParameterClient):
+            # either supply a client object directly
+            self.client = client
         else:
-            raise ValueError("Parameter server mode has to be either `http` or `socket`, "
-                             "got {}".format(parameter_server_mode))
+            # or a string to create a client
+            self.client = BaseParameterClient.get_client(client)
 
         self.train_config = train_config
         self.frequency = frequency
@@ -85,7 +84,6 @@ class AsynchronousSparkWorker(object):
         if x_train.size == 0:
             return
 
-        optimizer = get_optimizer(self.master_optimizer)
         self.model = model_from_yaml(self.yaml, self.custom_objects)
         self.model.compile(optimizer=get_optimizer(self.master_optimizer),
                            loss=self.master_loss, metrics=self.master_metrics)
