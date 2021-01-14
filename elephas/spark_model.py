@@ -120,8 +120,7 @@ class SparkModel(object):
         """
         return self._master_network.predict_classes(data)
 
-    def fit(self, rdd, epochs=10, batch_size=32,
-            verbose=0, validation_split=0.1):
+    def fit(self, rdd, **kwargs):
         """
         Train an elephas model on an RDD. The Keras model configuration as specified
         in the elephas model is sent to Spark workers, abd each worker will be trained
@@ -138,12 +137,12 @@ class SparkModel(object):
             rdd = rdd.repartition(self.num_workers)
 
         if self.mode in ['asynchronous', 'synchronous', 'hogwild']:
-            self._fit(rdd, epochs, batch_size, verbose, validation_split)
+            self._fit(rdd, **kwargs)
         else:
             raise ValueError(
                 "Choose from one of the modes: asynchronous, synchronous or hogwild")
 
-    def _fit(self, rdd, epochs, batch_size, verbose, validation_split):
+    def _fit(self, rdd, **kwargs):
         """Protected train method to make wrapping of modes easier
         """
         self._master_network.compile(optimizer=get_optimizer(self.master_optimizer),
@@ -151,8 +150,7 @@ class SparkModel(object):
                                      metrics=self.master_metrics)
         if self.mode in ['asynchronous', 'hogwild']:
             self.start_server()
-        train_config = self.get_train_config(
-            epochs, batch_size, verbose, validation_split)
+        train_config = kwargs
         freq = self.frequency
         optimizer = self.master_optimizer
         loss = self.master_loss

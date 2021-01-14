@@ -81,4 +81,3 @@ def test_training_asynchronous_socket(spark_context, mode, mnist_data, classific
     score = spark_model.master_network.evaluate(x_test, y_test, verbose=2)
 
     assert score
-
