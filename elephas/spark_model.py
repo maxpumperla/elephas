@@ -65,13 +65,6 @@ class SparkModel(object):
             self.parameter_server = factory.create_server(self.serialized_model, self.port, mode=self.mode)
             self.client = factory.create_client(self.port)
 
-    @staticmethod
-    def get_train_config(epochs, batch_size, verbose, validation_split):
-        return {'epochs': epochs,
-                'batch_size': batch_size,
-                'verbose': verbose,
-                'validation_split': validation_split}
-
     def get_config(self):
         base_config = {
             'parameter_server_mode': self.parameter_server_mode,
