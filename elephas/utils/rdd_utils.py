@@ -8,8 +8,6 @@ try:
 except Exception:
     print("WARNING")
 
-from six.moves import zip
-
 
 def to_java_rdd(jsc, features, labels, batch_size):
     """Convert numpy features and labels into a JavaRDD of
