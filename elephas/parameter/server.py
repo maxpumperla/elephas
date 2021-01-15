@@ -1,9 +1,10 @@
 import abc
+import pickle
 import socket
 from threading import Thread
-import six.moves.cPickle as pickle
 from flask import Flask, request
 from multiprocessing import Process
+from tensorflow.keras.models import Model
 
 from elephas.utils.sockets import determine_master
 from elephas.utils.sockets import receive, send
@@ -20,7 +21,7 @@ class BaseParameterServer(object):
     to cater to the needs of their respective BaseParameterClient instances.
     """
 
-    def __init__(self, model, port, **kwargs):
+    def __init__(self, model: Model, port: int, **kwargs):
         self.master_network = dict_to_model(model)
         self.port = port
 
@@ -45,7 +46,7 @@ class HttpServer(BaseParameterServer):
     POST updates.
     """
 
-    def __init__(self, model, port, **kwargs):
+    def __init__(self, model: Model, port: int, **kwargs):
         """Initializes and HTTP server from a serialized Keras model
         a parallelisation mode and a port to run the Flask application on. In
         hogwild mode no read- or write-locks will be acquired, in asynchronous
@@ -142,7 +143,7 @@ class SocketServer(BaseParameterServer):
 
     """
 
-    def __init__(self, model, port, **kwargs):
+    def __init__(self, model: Model, port: int, **kwargs):
         """Initializes a Socket server instance from a serializer Keras model
         and a port to listen to.
 

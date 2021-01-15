@@ -1,3 +1,4 @@
+from pyspark import RDD, SparkContext
 from pyspark.mllib.regression import LabeledPoint
 import numpy as np
 
@@ -31,7 +32,7 @@ def to_java_rdd(jsc, features, labels, batch_size):
     return jsc.parallelize(data_sets)
 
 
-def to_simple_rdd(sc, features, labels):
+def to_simple_rdd(sc: SparkContext, features: np.array, labels: np.array):
     """Convert numpy arrays of features and labels into
     an RDD of pairs.
 
@@ -44,7 +45,7 @@ def to_simple_rdd(sc, features, labels):
     return sc.parallelize(pairs)
 
 
-def to_labeled_point(sc, features, labels, categorical=False):
+def to_labeled_point(sc: SparkContext, features: np.array, labels: np.array, categorical: bool = False):
     """Convert numpy arrays of features and labels into
     a LabeledPoint RDD for MLlib and ML integration.
 
@@ -64,7 +65,7 @@ def to_labeled_point(sc, features, labels, categorical=False):
     return sc.parallelize(labeled_points)
 
 
-def from_labeled_point(rdd, categorical=False, nb_classes=None):
+def from_labeled_point(rdd: RDD, categorical: bool = False, nb_classes: int = None):
     """Convert a LabeledPoint RDD back to a pair of numpy arrays
 
     :param rdd: LabeledPoint RDD
@@ -85,7 +86,7 @@ def from_labeled_point(rdd, categorical=False, nb_classes=None):
     return features, labels
 
 
-def encode_label(label, nb_classes):
+def encode_label(label: np.array, nb_classes: int):
     """One-hot encoding of a single label
 
     :param label: class label (int or double without floating point digits)
@@ -97,7 +98,7 @@ def encode_label(label, nb_classes):
     return encoded
 
 
-def lp_to_simple_rdd(lp_rdd, categorical=False, nb_classes=None):
+def lp_to_simple_rdd(lp_rdd: RDD, categorical: bool = False, nb_classes: int = None):
     """Convert a LabeledPoint RDD into an RDD of feature-label pairs
 
     :param lp_rdd: LabeledPoint RDD of features and labels

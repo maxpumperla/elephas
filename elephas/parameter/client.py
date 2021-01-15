@@ -21,7 +21,7 @@ class BaseParameterClient(abc.ABC):
     client_type = 'base'
 
     @classmethod
-    def get_client(cls, client_type, port=4000):
+    def get_client(cls, client_type: str, port: int = 4000):
         try:
             return next(cl for cl in cls.__subclasses__() if cl.client_type == client_type)(port)
         except StopIteration:
@@ -29,7 +29,7 @@ class BaseParameterClient(abc.ABC):
                              "got {}".format(client_type))
 
     @abc.abstractmethod
-    def update_parameters(self, delta):
+    def update_parameters(self, delta: list):
         """Update master parameters with deltas from training process
         """
         raise NotImplementedError
@@ -50,7 +50,7 @@ class HttpClient(BaseParameterClient):
 
     client_type = 'http'
 
-    def __init__(self, port=4000):
+    def __init__(self, port: int = 4000):
         self.master_url = determine_master(port=port)
         self.headers = {'Content-Type': 'application/elephas'}
 
@@ -60,7 +60,7 @@ class HttpClient(BaseParameterClient):
         pickled_weights = urllib2.urlopen(request).read()
         return pickle.loads(pickled_weights)
 
-    def update_parameters(self, delta):
+    def update_parameters(self, delta: list):
         request = urllib2.Request('http://{}/update'.format(self.master_url),
                                   pickle.dumps(delta, -1), headers=self.headers)
         return urllib2.urlopen(request).read()
@@ -74,7 +74,7 @@ class SocketClient(BaseParameterClient):
     """
     client_type = 'socket'
 
-    def __init__(self, port=4000):
+    def __init__(self, port:int = 4000):
         self.port = port
 
     def get_parameters(self):
@@ -85,7 +85,7 @@ class SocketClient(BaseParameterClient):
             data = np.asarray(receive(sock))
         return data
 
-    def update_parameters(self, delta):
+    def update_parameters(self, delta: list):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             host = determine_master(port=self.port).split(':')[0]
             sock.connect((host, self.port))

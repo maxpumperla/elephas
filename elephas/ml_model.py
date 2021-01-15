@@ -1,5 +1,6 @@
 from enum import Enum
 
+import tensorflow
 import tensorflow.keras as keras
 import numpy as np
 import copy
@@ -9,6 +10,7 @@ import json
 from pyspark.ml.param.shared import HasOutputCol, HasFeaturesCol, HasLabelCol
 from pyspark import keyword_only, RDD
 from pyspark.ml import Estimator, Model
+from pyspark.sql import DataFrame
 from pyspark.sql.types import StringType, DoubleType, StructField
 
 from tensorflow.keras.models import model_from_yaml
@@ -53,7 +55,7 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
                 'nb_classes': self.get_nb_classes(),
                 'outputCol': self.getOutputCol()}
 
-    def save(self, file_name):
+    def save(self, file_name: str):
         f = h5py.File(file_name, mode='w')
 
         f.attrs['distributed_config'] = json.dumps({
@@ -73,7 +75,7 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
     def get_model(self):
         return model_from_yaml(self.get_keras_model_config())
 
-    def _fit(self, df):
+    def _fit(self, df: DataFrame):
         """Private fit method of the Estimator, which trains the model.
         """
         simple_rdd = df_to_simple_rdd(df, categorical=self.get_categorical_labels(), nb_classes=self.get_nb_classes(),
@@ -138,7 +140,7 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol):
                 'labelCol': self.getLabelCol(),
                 'outputCol': self.getOutputCol()}
 
-    def save(self, file_name):
+    def save(self, file_name: str):
         f = h5py.File(file_name, mode='w')
 
         f.attrs['distributed_config'] = json.dumps({
@@ -176,7 +178,7 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol):
         return results_df
 
 
-def load_ml_transformer(file_name):
+def load_ml_transformer(file_name: str):
     f = h5py.File(file_name, mode='r')
     elephas_conf = json.loads(f.attrs.get('distributed_config'))
     config = elephas_conf.get('config')
@@ -231,7 +233,7 @@ class LossModelTypeMapper(Singleton):
         self.__mapping.update({loss: model_type})
 
 
-def compute_predictions(model, model_type, rdd, features):
+def compute_predictions(model: tensorflow.keras.models.Model, model_type: ModelType, rdd: RDD, features: np.array):
     predict_function = determine_predict_function(model, model_type)
     predictions = rdd.ctx.parallelize(predict_function(features)).coalesce(1)
     if model_type == ModelType.CLASSIFICATION:
@@ -242,8 +244,8 @@ def compute_predictions(model, model_type, rdd, features):
     return results_rdd
 
 
-def determine_predict_function(model,
-                               model_type):
+def determine_predict_function(model: tensorflow.keras.models.Model,
+                               model_type: ModelType):
     if model_type == ModelType.CLASSIFICATION:
         if isinstance(model, keras.models.Sequential):
             predict_function = model.predict_classes

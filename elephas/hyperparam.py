@@ -1,10 +1,14 @@
+import pickle
+
+import tensorflow
 from hyperopt import Trials, rand
 from hyperas.ensemble import VotingModel
 from hyperas.optim import get_hyperopt_model_string, base_minimizer
 import numpy as np
+from pyspark import SparkContext
 from tensorflow.keras.models import model_from_yaml
-import six.moves.cPickle as pickle
-from six.moves import range
+
+
 # depend on hyperas, boto etc. is optional
 
 
@@ -15,11 +19,11 @@ class HyperParamModel(object):
     Spark.
     """
 
-    def __init__(self, sc, num_workers=4):
+    def __init__(self, sc: SparkContext, num_workers: int = 4):
         self.spark_context = sc
         self.num_workers = num_workers
 
-    def compute_trials(self, model, data, max_evals, notebook_name=None):
+    def compute_trials(self, model: tensorflow.keras.models.Model, data: np.array, max_evals: int, notebook_name=None):
         model_string = get_hyperopt_model_string(model=model, data=data, functions=None, notebook_name=notebook_name,
                                                  verbose=False, stack=3)
         hyperas_worker = HyperasWorker(model_string, max_evals)
@@ -30,7 +34,7 @@ class HyperParamModel(object):
 
         return trials_list
 
-    def minimize(self, model, data, max_evals, notebook_name=None):
+    def minimize(self, model: tensorflow.keras.models.Model, data: np.array, max_evals: int, notebook_name: str = None):
         global best_model_yaml, best_model_weights
 
         trials_list = self.compute_trials(
@@ -50,7 +54,8 @@ class HyperParamModel(object):
 
         return best_model
 
-    def best_ensemble(self, nb_ensemble_models, model, data, max_evals, voting='hard', weights=None):
+    def best_ensemble(self, nb_ensemble_models: int, model: tensorflow.keras.models.Model,
+                      data: np.array, max_evals: int, voting: str = 'hard', weights=None):
         model_list = self.best_models(nb_models=nb_ensemble_models, model=model,
                                       data=data, max_evals=max_evals)
         return VotingModel(model_list, voting, weights)
@@ -82,7 +87,7 @@ class HyperasWorker(object):
     Executes hyper-parameter search on each worker and returns results.
     """
 
-    def __init__(self, bc_model, bc_max_evals):
+    def __init__(self, bc_model: tensorflow.keras.models.Model, bc_max_evals: int):
         self.model_string = bc_model
         self.max_evals = bc_max_evals
 

@@ -1,8 +1,7 @@
 import numpy as np
-from six.moves import zip
 
 
-def add_params(param_list_left, param_list_right):
+def add_params(param_list_left: list, param_list_right: list):
     """Add two lists of parameters one by one
 
     :param param_list_left: list of numpy arrays
@@ -12,7 +11,7 @@ def add_params(param_list_left, param_list_right):
     return [x + y for x, y in zip(param_list_left, param_list_right)]
 
 
-def subtract_params(param_list_left, param_list_right):
+def subtract_params(param_list_left: list, param_list_right: list):
     """Subtract two lists of parameters
 
     :param param_list_left: list of numpy arrays
@@ -22,7 +21,7 @@ def subtract_params(param_list_left, param_list_right):
     return [x - y for x, y in zip(param_list_left, param_list_right)]
 
 
-def get_neutral(array_list):
+def get_neutral(array_list: list):
     """Get list of zero-valued numpy arrays for
     specified list of numpy arrays
 
@@ -32,7 +31,7 @@ def get_neutral(array_list):
     return [np.zeros_like(x) for x in array_list]
 
 
-def divide_by(array_list, num_workers):
+def divide_by(array_list: list, num_workers: int):
     """Divide a list of parameters by an integer num_workers.
 
     :param array_list:
