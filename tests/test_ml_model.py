@@ -134,6 +134,82 @@ def test_regression_model(spark_context, regression_model, boston_housing_datase
     print(metrics.r2)
 
 
+def test_set_cols_deprecated(spark_context, regression_model, boston_housing_dataset):
+    with pytest.deprecated_call():
+        batch_size = 64
+        epochs = 10
+
+        x_train, y_train, x_test, y_test = boston_housing_dataset
+        df = to_data_frame(spark_context, x_train, y_train)
+        df = df.withColumnRenamed('features', 'scaled_features')
+        df = df.withColumnRenamed('label', 'ground_truth')
+        test_df = to_data_frame(spark_context, x_test, y_test)
+        test_df = test_df.withColumnRenamed('features', 'scaled_features')
+        test_df = test_df.withColumnRenamed('label', 'ground_truth')
+
+        sgd = optimizers.SGD(lr=0.00001)
+        sgd_conf = optimizers.serialize(sgd)
+        estimator = ElephasEstimator()
+        estimator.set_keras_model_config(regression_model.to_yaml())
+        estimator.set_optimizer_config(sgd_conf)
+        estimator.setFeaturesCol('scaled_features')
+        estimator.setOutputCol('output')
+        estimator.setLabelCol('ground_truth')
+        estimator.set_mode("synchronous")
+        estimator.set_loss("mae")
+        estimator.set_metrics(['mae'])
+        estimator.set_epochs(epochs)
+        estimator.set_batch_size(batch_size)
+        estimator.set_validation_split(0.01)
+        estimator.set_categorical_labels(False)
+
+        pipeline = Pipeline(stages=[estimator])
+        fitted_pipeline = pipeline.fit(df)
+        prediction = fitted_pipeline.transform(test_df)
+        pnl = prediction.select("ground_truth", "output")
+        pnl.show(100)
+
+        prediction_and_observations = pnl.rdd.map(lambda row: (row['ground_truth'], row['output']))
+        metrics = RegressionMetrics(prediction_and_observations)
+        print(metrics.r2)
+
+
+def test_set_cols(spark_context, regression_model, boston_housing_dataset):
+    batch_size = 64
+    epochs = 10
+
+    x_train, y_train, x_test, y_test = boston_housing_dataset
+    df = to_data_frame(spark_context, x_train, y_train)
+    df = df.withColumnRenamed('features', 'scaled_features')
+    df = df.withColumnRenamed('label', 'ground_truth')
+    test_df = to_data_frame(spark_context, x_test, y_test)
+    test_df = test_df.withColumnRenamed('features', 'scaled_features')
+    test_df = test_df.withColumnRenamed('label', 'ground_truth')
+
+    sgd = optimizers.SGD(lr=0.00001)
+    sgd_conf = optimizers.serialize(sgd)
+    estimator = ElephasEstimator(labelCol='ground_truth', outputCol='output', featuresCol='scaled_features')
+    estimator.set_keras_model_config(regression_model.to_yaml())
+    estimator.set_optimizer_config(sgd_conf)
+    estimator.set_mode("synchronous")
+    estimator.set_loss("mae")
+    estimator.set_metrics(['mae'])
+    estimator.set_epochs(epochs)
+    estimator.set_batch_size(batch_size)
+    estimator.set_validation_split(0.01)
+    estimator.set_categorical_labels(False)
+
+    pipeline = Pipeline(stages=[estimator])
+    fitted_pipeline = pipeline.fit(df)
+    prediction = fitted_pipeline.transform(test_df)
+    pnl = prediction.select("ground_truth", "output")
+    pnl.show(100)
+
+    prediction_and_observations = pnl.rdd.map(lambda row: (row['ground_truth'], row['output']))
+    metrics = RegressionMetrics(prediction_and_observations)
+    print(metrics.r2)
+
+
 @pytest.mark.parametrize('loss, model_type', [('binary_crossentropy', ModelType.CLASSIFICATION),
                                               ('mean_squared_error', ModelType.REGRESSION),
                                               ('categorical_crossentropy', ModelType.CLASSIFICATION),

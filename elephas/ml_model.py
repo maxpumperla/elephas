@@ -1,3 +1,4 @@
+import warnings
 from enum import Enum
 
 import tensorflow
@@ -36,6 +37,8 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
     @keyword_only
     def __init__(self, **kwargs):
         super(ElephasEstimator, self).__init__()
+        # provide default for output column, if one is not supplied using `set_` method
+        self._defaultParamMap[self.outputCol] = 'prediction'
         self.set_params(**kwargs)
 
     def get_config(self):
@@ -100,10 +103,26 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
         model_weights = spark_model.master_network.get_weights()
         weights = simple_rdd.ctx.broadcast(model_weights)
         return ElephasTransformer(labelCol=self.getLabelCol(),
-                                  outputCol='prediction',
+                                  outputCol=self.getOutputCol(),
+                                  featuresCol=self.getFeaturesCol(),
                                   keras_model_config=spark_model.master_network.to_yaml(),
                                   weights=weights,
                                   loss=loss)
+
+    def setFeaturesCol(self, value):
+        warnings.warn("setFeaturesCol is deprecated in Spark 3.0.x+ - please supply featuresCol in the constructor i.e;"
+                      " ElephasEstimator(featuresCol='foo')", DeprecationWarning)
+        return self._set(featuresCol=value)
+
+    def setLabelCol(self, value):
+        warnings.warn("setLabelCol is deprecated in Spark 3.0.x+ - please supply labelCol in the constructor i.e;"
+                      " ElephasEstimator(labelCol='foo')", DeprecationWarning)
+        return self._set(labelCol=value)
+
+    def setOutputCol(self, value):
+        warnings.warn("setOutputCol is deprecated in Spark 3.0.x+ - please supply outputCol in the constructor i.e;"
+                      " ElephasEstimator(outputCol='foo')", DeprecationWarning)
+        return self._set(outputCol=value)
 
 
 def load_ml_estimator(file_name):
@@ -113,7 +132,7 @@ def load_ml_estimator(file_name):
     return ElephasEstimator(**config)
 
 
-class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol):
+class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, HasFeaturesCol):
     """SparkML Transformer implementation. Contains a trained model,
     with which new feature data can be transformed into labels.
     """
@@ -159,11 +178,12 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol):
         """
         output_col = self.getOutputCol()
         label_col = self.getLabelCol()
+        features_col = self.getFeaturesCol()
         new_schema = copy.deepcopy(df.schema)
         new_schema.add(StructField(output_col, StringType(), True))
 
         rdd = df.rdd.coalesce(1)
-        features = np.asarray(rdd.map(lambda x: from_vector(x.features)).collect())
+        features = np.asarray(rdd.map(lambda x: from_vector(x[features_col])).collect())
         # Note that we collect, since executing this on the rdd would require model serialization once again
         model = model_from_yaml(self.get_keras_model_config())
         model.set_weights(self.weights.value)
@@ -208,6 +228,7 @@ class LossModelTypeMapper(Singleton):
     """
     Mapper for losses -> model type
     """
+
     def __init__(self):
         loss_to_model_type = {}
         loss_to_model_type.update(
