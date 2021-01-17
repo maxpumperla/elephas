@@ -1,8 +1,7 @@
 import pytest
 from tensorflow.keras import optimizers
 
-from elephas.ml_model import ElephasEstimator, load_ml_estimator, ElephasTransformer, load_ml_transformer, \
-    ModelType, LossModelTypeMapper
+from elephas.ml_model import ElephasEstimator, load_ml_estimator, ElephasTransformer, load_ml_transformer
 from elephas.ml.adapter import to_data_frame
 
 from pyspark.mllib.evaluation import MulticlassMetrics, RegressionMetrics
@@ -208,23 +207,3 @@ def test_set_cols(spark_context, regression_model, boston_housing_dataset):
     prediction_and_observations = pnl.rdd.map(lambda row: (row['ground_truth'], row['output']))
     metrics = RegressionMetrics(prediction_and_observations)
     print(metrics.r2)
-
-
-@pytest.mark.parametrize('loss, model_type', [('binary_crossentropy', ModelType.CLASSIFICATION),
-                                              ('mean_squared_error', ModelType.REGRESSION),
-                                              ('categorical_crossentropy', ModelType.CLASSIFICATION),
-                                              ('mean_absolute_error', ModelType.REGRESSION)])
-def test_model_type_mapper(loss, model_type):
-    assert LossModelTypeMapper().get_model_type(loss) == model_type
-
-
-def test_model_type_mapper_custom():
-    LossModelTypeMapper().register_loss('test', ModelType.REGRESSION)
-    assert LossModelTypeMapper().get_model_type('test') == ModelType.REGRESSION
-
-
-def test_model_type_mapper_custom_callable():
-    def custom_loss(y_true, y_pred):
-        return y_true - y_pred
-    LossModelTypeMapper().register_loss(custom_loss, ModelType.REGRESSION)
-    assert LossModelTypeMapper().get_model_type('custom_loss') == ModelType.REGRESSION

@@ -1,6 +1,13 @@
+from functools import partial
+from typing import Union
+
 import pyspark
 import h5py
 import json
+
+import numpy as np
+from tensorflow.keras.models import model_from_yaml
+from pyspark import RDD
 from tensorflow.keras.optimizers import serialize as serialize_optimizer
 from tensorflow.keras.optimizers import get as get_optimizer
 from tensorflow.keras.models import load_model
@@ -10,6 +17,7 @@ from .utils import subtract_params
 from .utils import lp_to_simple_rdd
 from .utils import model_to_dict
 from .mllib import to_matrix, from_matrix, to_vector, from_vector
+from .utils.model_utils import LossModelTypeMapper, determine_predict_function
 from .worker import AsynchronousSparkWorker, SparkWorker
 
 
@@ -103,17 +111,15 @@ class SparkModel(object):
     def stop_server(self):
         self.parameter_server.stop()
 
-    def predict(self, data):
+    def predict(self, data: Union[RDD, np.array]):
         """Get prediction probabilities for a numpy array of features
         """
-        return self._master_network.predict(data)
+        if isinstance(data, (RDD, )):
+            return self.predict_rdd(data)
+        elif isinstance(data, (np.ndarray, )):
+            return self._master_network.predict(data)
 
-    def predict_classes(self, data):
-        """ Predict classes for a numpy array of features
-        """
-        return self._master_network.predict_classes(data)
-
-    def fit(self, rdd, **kwargs):
+    def fit(self, rdd: RDD, **kwargs):
         """
         Train an elephas model on an RDD. The Keras model configuration as specified
         in the elephas model is sent to Spark workers, abd each worker will be trained
@@ -135,7 +141,7 @@ class SparkModel(object):
             raise ValueError(
                 "Choose from one of the modes: asynchronous, synchronous or hogwild")
 
-    def _fit(self, rdd, **kwargs):
+    def _fit(self, rdd: RDD, **kwargs):
         """Protected train method to make wrapping of modes easier
         """
         self._master_network.compile(optimizer=get_optimizer(self.master_optimizer),
@@ -175,6 +181,18 @@ class SparkModel(object):
         self._master_network.set_weights(new_parameters)
         if self.mode in ['asynchronous', 'hogwild']:
             self.stop_server()
+
+    def predict_rdd(self, rdd: RDD):
+        def _predict(model, model_type, data_iterator):
+            model = model_from_yaml(model)
+            predict_function = determine_predict_function(model, model_type)
+            return predict_function(np.expand_dims(data_iterator, axis=0))
+        if self.num_workers:
+            rdd = rdd.repartition(self.num_workers)
+        yaml_model = self._master_network.to_yaml()
+        model_type = LossModelTypeMapper().get_model_type(self.master_loss)
+        predictions = rdd.map(partial(_predict, yaml_model, model_type)).collect()
+        return predictions
 
 
 def load_spark_model(file_name):
