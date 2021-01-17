@@ -114,10 +114,11 @@ class SparkModel(object):
     def predict(self, data: Union[RDD, np.array]):
         """Get prediction probabilities for a numpy array of features
         """
-        if isinstance(data, (RDD, )):
-            return self.predict_rdd(data)
-        elif isinstance(data, (np.ndarray, )):
-            return self._master_network.predict(data)
+        if isinstance(data, (np.ndarray, )):
+            from pyspark.sql import SparkSession
+            sc = SparkSession.builder.getOrCreate().sparkContext
+            data = sc.parallelize(data)
+        return self._predict(data)
 
     def fit(self, rdd: RDD, **kwargs):
         """
@@ -182,14 +183,14 @@ class SparkModel(object):
         if self.mode in ['asynchronous', 'hogwild']:
             self.stop_server()
 
-    def predict_rdd(self, rdd: RDD):
+    def _predict(self, rdd: RDD):
         def _predict(model, model_type, data_iterator):
             model = model_from_yaml(model)
             predict_function = determine_predict_function(model, model_type)
             return predict_function(np.expand_dims(data_iterator, axis=0))
         if self.num_workers:
             rdd = rdd.repartition(self.num_workers)
-        yaml_model = self._master_network.to_yaml()
+        yaml_model = self.master_network.to_yaml()
         model_type = LossModelTypeMapper().get_model_type(self.master_loss)
         predictions = rdd.map(partial(_predict, yaml_model, model_type)).collect()
         return predictions

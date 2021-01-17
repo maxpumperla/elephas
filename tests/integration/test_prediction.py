@@ -16,15 +16,13 @@ def test_classification_prediction(spark_context, mode, mnist_data, classificati
     x_train, y_train, x_test, y_test = mnist_data
     x_train = x_train[:1000]
     y_train = y_train[:1000]
-    x_test = x_test[:1]
-    y_test = y_test[:500]
+    x_test = x_test[:100]
 
     sgd = SGD(lr=0.1)
     classification_model.compile(sgd, 'categorical_crossentropy', ['acc'])
 
     # Build RDD from numpy features and labels
     train_rdd = to_simple_rdd(spark_context, x_train, y_train)
-    test_rdd = spark_context.parallelize(x_test)
 
     # Initialize SparkModel from keras model and Spark context
     spark_model = SparkModel(classification_model, frequency='epoch', mode=mode)
@@ -33,5 +31,35 @@ def test_classification_prediction(spark_context, mode, mnist_data, classificati
     spark_model.fit(train_rdd, epochs=epochs, batch_size=batch_size,
                     verbose=0, validation_split=0.1)
 
-    predictions = spark_model.predict(test_rdd)
+    # assert we have as many predictions as samples provided
+    assert len(spark_model.predict(x_test)) == 100
 
+    test_rdd = spark_context.parallelize(x_test)
+    # assert we can supply rdd
+    assert len(spark_model.predict(test_rdd)) == 100
+
+
+@pytest.mark.parametrize('mode', ['synchronous', 'asynchronous', 'hogwild'])
+def test_classification_regression(spark_context, mode, boston_housing_dataset, regression_model):
+    x_train, y_train, x_test, y_test = boston_housing_dataset
+    train_rdd = to_simple_rdd(spark_context, x_train, y_train)
+    x_test = x_test[:100]
+
+    # Define basic parameters
+    batch_size = 64
+    epochs = 10
+    sgd = SGD(lr=0.0000001)
+    regression_model.compile(sgd, 'mse', ['mae'])
+    # Initialize SparkModel from keras model and Spark context
+    spark_model = SparkModel(regression_model, frequency='epoch', mode=mode)
+
+    # Train Spark model
+    spark_model.fit(train_rdd, epochs=epochs, batch_size=batch_size,
+                    verbose=0, validation_split=0.1)
+
+    # assert we have as many predictions as samples provided
+    assert len(spark_model.predict(x_test)) == 100
+
+    test_rdd = spark_context.parallelize(x_test)
+    # assert we can supply rdd
+    assert len(spark_model.predict(test_rdd)) == 100
