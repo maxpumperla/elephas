@@ -191,33 +191,37 @@ class SparkModel(object):
             self.stop_server()
 
     def _predict(self, rdd: RDD):
-        def _predict(model, weights, data_iterator):
-            model = model_from_yaml(model)
-            model.set_weights(weights)
-            return model.predict(np.expand_dims(data_iterator, axis=0))
         if self.num_workers:
             rdd = rdd.repartition(self.num_workers)
         yaml_model = self.master_network.to_yaml()
         weights = self.master_network.get_weights()
-        predictions = rdd.map(partial(_predict, yaml_model, weights)).collect()
+        weights = rdd.context.broadcast(weights)
+
+        def _predict(model, data):
+            model = model_from_yaml(model)
+            model.set_weights(weights.value)
+            return model.predict(np.expand_dims(data, axis=0))
+        predictions = rdd.map(partial(_predict, yaml_model)).collect()
         return predictions
 
     def _evaluate(self, rdd: RDD):
-        def _evaluate(model, weights, optimizer, loss, data_iterator):
+        yaml_model = self.master_network.to_yaml()
+        optimizer = self.master_optimizer
+        loss = self.master_loss
+        weights = self.master_network.get_weights()
+        weights = rdd.context.broadcast(weights)
+
+        def _evaluate(model, optimizer, loss, data):
             model = model_from_yaml(model)
-            model.set_weights(weights)
+            model.set_weights(weights.value)
             model.compile(optimizer, loss)
-            x_test, y_test = data_iterator
+            x_test, y_test = data
             x_test = np.expand_dims(x_test, axis=0)
             y_test = np.expand_dims(y_test, axis=0)
             return model.evaluate(x_test, y_test)
         if self.num_workers:
             rdd = rdd.repartition(self.num_workers)
-        yaml_model = self.master_network.to_yaml()
-        weights = self.master_network.get_weights()
-        optimizer = self.master_optimizer
-        loss = self.master_loss
-        results = rdd.map(partial(_evaluate, yaml_model, weights, optimizer, loss)).mean()
+        results = rdd.map(partial(_evaluate, yaml_model, optimizer, loss)).mean()
         return results
 
 
