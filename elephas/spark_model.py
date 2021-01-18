@@ -1,4 +1,5 @@
 from functools import partial
+from itertools import tee
 from typing import Union
 
 import pyspark
@@ -14,7 +15,7 @@ from tensorflow.keras.models import load_model
 
 from .parameter.factory import ClientServerFactory
 from .utils import subtract_params
-from .utils import lp_to_simple_rdd
+from .utils import lp_to_simple_rdd, to_simple_rdd
 from .utils import model_to_dict
 from .mllib import to_matrix, from_matrix, to_vector, from_vector
 from .utils.model_utils import LossModelTypeMapper, determine_predict_function
@@ -23,8 +24,8 @@ from .worker import AsynchronousSparkWorker, SparkWorker
 
 class SparkModel(object):
 
-    def __init__(self, model, mode='asynchronous', frequency='epoch',  parameter_server_mode='http', num_workers=None,
-                 custom_objects=None, batch_size=32,  port=4000, *args, **kwargs):
+    def __init__(self, model, mode='asynchronous', frequency='epoch', parameter_server_mode='http', num_workers=None,
+                 custom_objects=None, batch_size=32, port=4000, *args, **kwargs):
         """SparkModel
 
         Base class for distributed training on RDDs. Spark model takes a Keras
@@ -114,11 +115,17 @@ class SparkModel(object):
     def predict(self, data: Union[RDD, np.array]):
         """Get prediction probabilities for a numpy array of features
         """
-        if isinstance(data, (np.ndarray, )):
+        if isinstance(data, (np.ndarray,)):
             from pyspark.sql import SparkSession
             sc = SparkSession.builder.getOrCreate().sparkContext
             data = sc.parallelize(data)
         return self._predict(data)
+
+    def evaluate(self, x_test, y_test):
+        from pyspark.sql import SparkSession
+        sc = SparkSession.builder.getOrCreate().sparkContext
+        test_rdd = to_simple_rdd(sc, x_test, y_test)
+        return self._evaluate(test_rdd)
 
     def fit(self, rdd: RDD, **kwargs):
         """
@@ -184,16 +191,34 @@ class SparkModel(object):
             self.stop_server()
 
     def _predict(self, rdd: RDD):
-        def _predict(model, model_type, data_iterator):
+        def _predict(model, weights, data_iterator):
             model = model_from_yaml(model)
-            predict_function = determine_predict_function(model, model_type)
-            return predict_function(np.expand_dims(data_iterator, axis=0))
+            model.set_weights(weights)
+            return model.predict(np.expand_dims(data_iterator, axis=0))
         if self.num_workers:
             rdd = rdd.repartition(self.num_workers)
         yaml_model = self.master_network.to_yaml()
-        model_type = LossModelTypeMapper().get_model_type(self.master_loss)
-        predictions = rdd.map(partial(_predict, yaml_model, model_type)).collect()
+        weights = self.master_network.get_weights()
+        predictions = rdd.map(partial(_predict, yaml_model, weights)).collect()
         return predictions
+
+    def _evaluate(self, rdd: RDD):
+        def _evaluate(model, weights, optimizer, loss, data_iterator):
+            model = model_from_yaml(model)
+            model.set_weights(weights)
+            model.compile(optimizer, loss)
+            x_test, y_test = data_iterator
+            x_test = np.expand_dims(x_test, axis=0)
+            y_test = np.expand_dims(y_test, axis=0)
+            return model.evaluate(x_test, y_test)
+        if self.num_workers:
+            rdd = rdd.repartition(self.num_workers)
+        yaml_model = self.master_network.to_yaml()
+        weights = self.master_network.get_weights()
+        optimizer = self.master_optimizer
+        loss = self.master_loss
+        results = rdd.map(partial(_evaluate, yaml_model, weights, optimizer, loss)).mean()
+        return results
 
 
 def load_spark_model(file_name):
