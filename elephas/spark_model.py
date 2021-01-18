@@ -18,7 +18,6 @@ from .utils import subtract_params
 from .utils import lp_to_simple_rdd, to_simple_rdd
 from .utils import model_to_dict
 from .mllib import to_matrix, from_matrix, to_vector, from_vector
-from .utils.model_utils import LossModelTypeMapper, determine_predict_function
 from .worker import AsynchronousSparkWorker, SparkWorker
 
 
@@ -200,8 +199,9 @@ class SparkModel(object):
         def _predict(model, data):
             model = model_from_yaml(model)
             model.set_weights(weights.value)
-            return model.predict(np.expand_dims(data, axis=0))
-        predictions = rdd.map(partial(_predict, yaml_model)).collect()
+            data = np.array([x for x in data])
+            return model.predict(data)
+        predictions = rdd.mapPartitions(partial(_predict, yaml_model)).collect()
         return predictions
 
     def _evaluate(self, rdd: RDD):
@@ -211,17 +211,17 @@ class SparkModel(object):
         weights = self.master_network.get_weights()
         weights = rdd.context.broadcast(weights)
 
-        def _evaluate(model, optimizer, loss, data):
+        def _evaluate(model, optimizer, loss, data_iterator):
             model = model_from_yaml(model)
             model.set_weights(weights.value)
             model.compile(optimizer, loss)
-            x_test, y_test = data
-            x_test = np.expand_dims(x_test, axis=0)
-            y_test = np.expand_dims(y_test, axis=0)
-            return model.evaluate(x_test, y_test)
+            feature_iterator, label_iterator = tee(data_iterator, 2)
+            x_test = np.asarray([x for x, y in feature_iterator])
+            y_test = np.asarray([y for x, y in label_iterator])
+            return [model.evaluate(x_test, y_test)]
         if self.num_workers:
             rdd = rdd.repartition(self.num_workers)
-        results = rdd.map(partial(_evaluate, yaml_model, optimizer, loss)).mean()
+        results = rdd.mapPartitions(partial(_evaluate, yaml_model, optimizer, loss)).mean()
         return results
 
 
