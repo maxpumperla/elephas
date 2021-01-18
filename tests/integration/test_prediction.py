@@ -1,3 +1,4 @@
+import random
 from math import isclose
 
 from tensorflow.keras.optimizers import SGD
@@ -29,7 +30,7 @@ def test_classification_prediction(spark_context, mode, mnist_data, classificati
     train_rdd = to_simple_rdd(spark_context, x_train, y_train)
 
     # Initialize SparkModel from keras model and Spark context
-    spark_model = SparkModel(classification_model, frequency='epoch', mode=mode)
+    spark_model = SparkModel(classification_model, frequency='epoch', mode=mode, port=4000 + random.randint(0, 100))
 
     # Train Spark model
     spark_model.fit(train_rdd, epochs=epochs, batch_size=batch_size,
@@ -58,7 +59,7 @@ def test_regression_prediction(spark_context, mode, boston_housing_dataset, regr
     sgd = SGD(lr=0.000001)
     regression_model.compile(sgd, 'mse', ['mae'])
     # Initialize SparkModel from keras model and Spark context
-    spark_model = SparkModel(regression_model, frequency='epoch', mode=mode)
+    spark_model = SparkModel(regression_model, frequency='epoch', mode=mode, port=4000 + random.randint(0, 100))
 
     # Train Spark model
     spark_model.fit(train_rdd, epochs=epochs, batch_size=batch_size,
@@ -95,7 +96,7 @@ def test_evaluate(spark_context, mode, mnist_data, classification_model):
     train_rdd = to_simple_rdd(spark_context, x_train, y_train)
 
     # Initialize SparkModel from keras model and Spark context
-    spark_model = SparkModel(classification_model, frequency='epoch', mode=mode)
+    spark_model = SparkModel(classification_model, frequency='epoch', mode=mode, port=4000 + random.randint(0, 100))
 
     # Train Spark model
     spark_model.fit(train_rdd, epochs=epochs, batch_size=batch_size,
