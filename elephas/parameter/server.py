@@ -21,9 +21,10 @@ class BaseParameterServer(object):
     to cater to the needs of their respective BaseParameterClient instances.
     """
 
-    def __init__(self, model: Model, port: int, **kwargs):
+    def __init__(self, model: Model, port: int, mode: str, **kwargs):
         self.master_network = dict_to_model(model)
         self.port = port
+        self.mode = mode
 
     @abc.abstractmethod
     def start(self):
@@ -46,7 +47,7 @@ class HttpServer(BaseParameterServer):
     POST updates.
     """
 
-    def __init__(self, model: Model, port: int, **kwargs):
+    def __init__(self, model: Model, port: int, mode: str, **kwargs):
         """Initializes and HTTP server from a serialized Keras model
         a parallelisation mode and a port to run the Flask application on. In
         hogwild mode no read- or write-locks will be acquired, in asynchronous
@@ -60,8 +61,7 @@ class HttpServer(BaseParameterServer):
         :param use_reloader: boolean, Flask `use_reloader` argument
         """
 
-        super().__init__(model, port, **kwargs)
-        self.mode = kwargs.get('mode')
+        super().__init__(model, port, mode, **kwargs)
         self.master_url = None
 
         if is_running_in_notebook():
@@ -143,7 +143,7 @@ class SocketServer(BaseParameterServer):
 
     """
 
-    def __init__(self, model: Model, port: int, **kwargs):
+    def __init__(self, model: Model, port: int, mode: str, **kwargs):
         """Initializes a Socket server instance from a serializer Keras model
         and a port to listen to.
 
@@ -151,7 +151,7 @@ class SocketServer(BaseParameterServer):
         :param port: int, port to run the socket on
         """
 
-        super().__init__(model, port, **kwargs)
+        super().__init__(model, port, mode, **kwargs)
         self.socket = None
         self.runs = False
         self.connections = []
@@ -201,16 +201,20 @@ class SocketServer(BaseParameterServer):
         data = receive(conn)
         delta = data['delta']
         weights = self.master_network.get_weights()
-        self.lock.acquire_write()
+        if self.mode == 'asynchronous':
+            self.lock.acquire_write()
         # apply the gradient
         self.master_network.set_weights(subtract_params(weights, delta))
-        self.lock.release()
+        if self.mode == 'asynchronous':
+            self.lock.release()
 
     def get_parameters(self, conn):
-        self.lock.acquire_read()
+        if self.mode == 'asynchronous':
+            self.lock.acquire_read()
         weights = self.master_network.get_weights()
         send(conn, weights)
-        self.lock.release()
+        if self.mode == 'asynchronous':
+            self.lock.release()
 
     def action_listener(self, conn):
         while self.runs:

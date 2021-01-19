@@ -70,7 +70,7 @@ class SparkModel(object):
         self.serialized_model = model_to_dict(model)
         if self.mode is not 'synchronous':
             factory = ClientServerFactory.get_factory(self.parameter_server_mode)
-            self.parameter_server = factory.create_server(self.serialized_model, self.port, mode=self.mode)
+            self.parameter_server = factory.create_server(self.serialized_model, self.port, self.mode)
             self.client = factory.create_client(self.port)
 
     def get_config(self):
