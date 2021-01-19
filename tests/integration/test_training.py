@@ -26,7 +26,7 @@ def test_training_modes_classification(spark_context, mode, mnist_data, classifi
     rdd = to_simple_rdd(spark_context, x_train, y_train)
 
     # Initialize SparkModel from keras model and Spark context
-    spark_model = SparkModel(classification_model, frequency='epoch', mode=mode, port=4000 + random.randint(0, 100))
+    spark_model = SparkModel(classification_model, frequency='epoch', mode=mode, port=4000 + random.randint(0, 200))
 
     # Train Spark model
     spark_model.fit(rdd, epochs=epochs, batch_size=batch_size,
@@ -47,7 +47,7 @@ def test_training_modes_regression(spark_context, mode, boston_housing_dataset, 
     epochs = 10
     sgd = SGD(lr=0.0000001)
     regression_model.compile(sgd, 'mse', ['mae'])
-    spark_model = SparkModel(regression_model, frequency='epoch', mode=mode, port=4000 + random.randint(0, 100))
+    spark_model = SparkModel(regression_model, frequency='epoch', mode=mode, port=4000 + random.randint(0, 200))
 
     # Train Spark model
     spark_model.fit(rdd, epochs=epochs, batch_size=batch_size,
@@ -74,7 +74,7 @@ def test_training_asynchronous_socket(spark_context, mode, mnist_data, classific
 
     # Initialize SparkModel from keras model and Spark context
     spark_model = SparkModel(classification_model, frequency='epoch',
-                             mode=mode, parameter_server_mode='socket', port=4000 + random.randint(0, 100))
+                             mode=mode, parameter_server_mode='socket', port=4000 + random.randint(0, 200))
 
     # Train Spark model
     spark_model.fit(rdd, epochs=epochs, batch_size=batch_size,
