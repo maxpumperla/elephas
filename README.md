@@ -1,4 +1,3 @@
-
 # Elephas: Distributed Deep Learning with Keras & Spark 
 
 ![Elephas](https://github.com/maxpumperla/elephas/blob/master/elephas-logo.png)
@@ -113,6 +112,25 @@ spark-submit --driver-memory 1G ./your_script.py
 Increasing the driver memory even further may be necessary, as the set of parameters in a network may be very large 
 and collecting them on the driver eats up a lot of resources. See the examples folder for a few working examples.
 
+## Distributed Inference / Evaluation
+
+The `SparkModel` can also be used for distributed inference (prediction) and evaluation. Similar to the `fit` method,  the `predict` and `evaluate` methods
+conform to the Keras Model API. 
+
+```python
+from elephas.spark_model import SparkModel
+
+# create/train the model, similar to the previous section (Basic Spark Integration)
+model = ...
+spark_model = SparkModel(model, ...)
+spark_model.fit(...)
+
+x_test, y_test = ... # load test data
+
+predictions = spark_model.predict(x_test) # perform inference
+evaluation = spark_model.evaluate(x_test, y_test) # perform evaluation/scoring
+```
+The paradigm is identical to the data parallelism in training, as the model is serialized and shipped to the workers and used to evaluate a chunk of the testing data.
 
 ## Spark MLlib integration
 
@@ -174,7 +192,6 @@ as functions, hyper-parameter ranges are defined through braces. See the hyperas
 this works.
 
 ```python
-from __future__ import print_function
 from hyperopt import STATUS_OK
 from hyperas.distributions import choice, uniform
 
@@ -275,3 +292,7 @@ data-parallel deep-learning algorithms.
 [2] F. Niu, B. Recht, C. Re, S.J. Wright [HOGWILD!: A Lock-Free Approach to Parallelizing Stochastic Gradient Descent](http://arxiv.org/abs/1106.5730)
 
 [3] C. Noel, S. Osindero. [Dogwild! — Distributed Hogwild for CPU & GPU](http://stanford.edu/~rezab/nips2014workshop/submits/dogwild.pdf)
+
+## Maintainers / Contributions
+
+This great project was started by Max Pumperla, and is currently maintained by Daniel Cahall (https://github.com/danielenricocahall). If you have any questions, please feel free to open up an issue or send an email to danielenricocahall@gmail.com. If you want to contribute, feel free to submit a PR, or start a conversation about how we can go about implementing something.
