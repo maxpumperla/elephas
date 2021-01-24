@@ -1,5 +1,8 @@
 import pytest
 from tensorflow.keras import optimizers
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.activations import relu
 
 from elephas.ml_model import ElephasEstimator, load_ml_estimator, ElephasTransformer, load_ml_transformer
 from elephas.ml.adapter import to_data_frame
@@ -207,3 +210,36 @@ def test_set_cols(spark_context, regression_model, boston_housing_dataset):
     prediction_and_observations = pnl.rdd.map(lambda row: (row['ground_truth'], row['output']))
     metrics = RegressionMetrics(prediction_and_observations)
     print(metrics.r2)
+
+
+def test_custom_objects(spark_context, boston_housing_dataset):
+    def custom_activation(x):
+        return 2 * relu(x)
+    model = Sequential()
+    model.add(Dense(64, input_shape=(13,)))
+    model.add(Dense(64, activation=custom_activation))
+    model.add(Dense(1, activation='linear'))
+    x_train, y_train, x_test, y_test = boston_housing_dataset
+    df = to_data_frame(spark_context, x_train, y_train)
+    test_df = to_data_frame(spark_context, x_test, y_test)
+
+    sgd = optimizers.SGD(lr=0.00001)
+    sgd_conf = optimizers.serialize(sgd)
+    estimator = ElephasEstimator()
+    estimator.set_keras_model_config(model.to_yaml())
+    estimator.set_optimizer_config(sgd_conf)
+    estimator.set_mode("synchronous")
+    estimator.set_loss("mae")
+    estimator.set_metrics(['mae'])
+    estimator.set_epochs(10)
+    estimator.set_batch_size(32)
+    estimator.set_validation_split(0.01)
+    estimator.set_categorical_labels(False)
+    estimator.set_custom_objects({'custom_activation': custom_activation})
+
+    pipeline = Pipeline(stages=[estimator])
+    fitted_pipeline = pipeline.fit(df)
+    prediction = fitted_pipeline.transform(test_df)
+
+
+

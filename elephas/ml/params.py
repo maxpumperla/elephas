@@ -228,3 +228,18 @@ class HasLoss(Params):
 
     def get_loss(self):
         return self.getOrDefault(self.loss)
+
+
+class HasCustomObjects(Params):
+    def __init__(self):
+        super(HasCustomObjects, self).__init__()
+        self.custom_objects = Param(self, "custom_objects",
+                                    "Custom objects (i.e; custom activation functions, custom layers) in a model")
+        self._setDefault(custom_objects={})
+
+    def set_custom_objects(self, custom_objects):
+        self._paramMap[self.custom_objects] = custom_objects
+        return self
+
+    def get_custom_objects(self):
+        return self.getOrDefault(self.custom_objects)

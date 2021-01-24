@@ -22,9 +22,9 @@ class BaseParameterServer(object):
     """
 
     def __init__(self, model: Model, port: int, mode: str, **kwargs):
-        self.master_network = dict_to_model(model)
         self.port = port
         self.mode = mode
+        self.master_network = dict_to_model(model, kwargs.get('custom_objects'))
 
     @abc.abstractmethod
     def start(self):
@@ -227,8 +227,6 @@ class SocketServer(BaseParameterServer):
     def run(self):
         while self.runs:
             conn, addr = self.socket.accept()
-            thread = Thread(target=self.action_listener, args=(conn, ))
+            thread = Thread(target=self.action_listener, args=(conn,))
             thread.start()
             self.connections.append(thread)
-
-

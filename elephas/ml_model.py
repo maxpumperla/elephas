@@ -23,7 +23,7 @@ from .ml.params import *
 class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasKerasModelConfig, HasFeaturesCol,
                        HasLabelCol, HasMode, HasEpochs, HasBatchSize, HasFrequency, HasVerbosity, HasNumberOfClasses,
                        HasNumberOfWorkers, HasOutputCol, HasLoss,
-                       HasMetrics, HasKerasOptimizerConfig):
+                       HasMetrics, HasKerasOptimizerConfig, HasCustomObjects):
     """
     SparkML Estimator implementation of an elephas model. This estimator takes all relevant arguments for model
     compilation and training.
@@ -73,7 +73,7 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
         return self._set(**kwargs)
 
     def get_model(self):
-        return model_from_yaml(self.get_keras_model_config())
+        return model_from_yaml(self.get_keras_model_config(), self.get_custom_objects())
 
     def _fit(self, df: DataFrame):
         """Private fit method of the Estimator, which trains the model.
@@ -81,7 +81,7 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
         simple_rdd = df_to_simple_rdd(df, categorical=self.get_categorical_labels(), nb_classes=self.get_nb_classes(),
                                       features_col=self.getFeaturesCol(), label_col=self.getLabelCol())
         simple_rdd = simple_rdd.repartition(self.get_num_workers())
-        keras_model = model_from_yaml(self.get_keras_model_config())
+        keras_model = model_from_yaml(self.get_keras_model_config(), self.get_custom_objects())
         metrics = self.get_metrics()
         loss = self.get_loss()
         optimizer = get_optimizer(self.get_optimizer_config())
@@ -90,7 +90,8 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
         spark_model = SparkModel(model=keras_model,
                                  mode=self.get_mode(),
                                  frequency=self.get_frequency(),
-                                 num_workers=self.get_num_workers())
+                                 num_workers=self.get_num_workers(),
+                                 custom_objects=self.get_custom_objects())
         spark_model.fit(simple_rdd,
                         epochs=self.get_epochs(),
                         batch_size=self.get_batch_size(),
@@ -104,6 +105,7 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
                                   featuresCol=self.getFeaturesCol(),
                                   keras_model_config=spark_model.master_network.to_yaml(),
                                   weights=weights,
+                                  custom_objects=self.get_custom_objects(),
                                   loss=loss)
 
     def setFeaturesCol(self, value):
@@ -129,7 +131,7 @@ def load_ml_estimator(file_name):
     return ElephasEstimator(**config)
 
 
-class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, HasFeaturesCol):
+class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, HasFeaturesCol, HasCustomObjects):
     """SparkML Transformer implementation. Contains a trained model,
     with which new feature data can be transformed into labels.
     """
@@ -182,7 +184,7 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
         rdd = df.rdd.coalesce(1)
         features = np.asarray(rdd.map(lambda x: from_vector(x[features_col])).collect())
         # Note that we collect, since executing this on the rdd would require model serialization once again
-        model = model_from_yaml(self.get_keras_model_config())
+        model = model_from_yaml(self.get_keras_model_config(), self.get_custom_objects())
         model.set_weights(self.weights.value)
 
         results_rdd = compute_predictions(model, self.model_type, rdd, features)

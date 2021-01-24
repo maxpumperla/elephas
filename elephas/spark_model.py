@@ -70,7 +70,8 @@ class SparkModel(object):
         self.serialized_model = model_to_dict(model)
         if self.mode is not 'synchronous':
             factory = ClientServerFactory.get_factory(self.parameter_server_mode)
-            self.parameter_server = factory.create_server(self.serialized_model, self.port, self.mode)
+            self.parameter_server = factory.create_server(self.serialized_model, self.port, self.mode,
+                                                          custom_objects=self.custom_objects)
             self.client = factory.create_client(self.port)
 
     def get_config(self):
@@ -195,13 +196,14 @@ class SparkModel(object):
         yaml_model = self.master_network.to_yaml()
         weights = self.master_network.get_weights()
         weights = rdd.context.broadcast(weights)
+        custom_objects = self.custom_objects
 
-        def _predict(model, data):
-            model = model_from_yaml(model)
+        def _predict(model, custom_objects, data):
+            model = model_from_yaml(model, custom_objects)
             model.set_weights(weights.value)
             data = np.array([x for x in data])
             return model.predict(data)
-        predictions = rdd.mapPartitions(partial(_predict, yaml_model)).collect()
+        predictions = rdd.mapPartitions(partial(_predict, yaml_model, custom_objects)).collect()
         return predictions
 
     def _evaluate(self, rdd: RDD):
@@ -210,9 +212,10 @@ class SparkModel(object):
         loss = self.master_loss
         weights = self.master_network.get_weights()
         weights = rdd.context.broadcast(weights)
+        custom_objects = self.custom_objects
 
-        def _evaluate(model, optimizer, loss, data_iterator):
-            model = model_from_yaml(model)
+        def _evaluate(model, optimizer, loss, custom_objects, data_iterator):
+            model = model_from_yaml(model, custom_objects)
             model.set_weights(weights.value)
             model.compile(optimizer, loss)
             feature_iterator, label_iterator = tee(data_iterator, 2)
@@ -221,7 +224,7 @@ class SparkModel(object):
             return [model.evaluate(x_test, y_test)]
         if self.num_workers:
             rdd = rdd.repartition(self.num_workers)
-        results = rdd.mapPartitions(partial(_evaluate, yaml_model, optimizer, loss)).mean()
+        results = rdd.mapPartitions(partial(_evaluate, yaml_model, optimizer, loss, custom_objects)).mean()
         return results
 
 
