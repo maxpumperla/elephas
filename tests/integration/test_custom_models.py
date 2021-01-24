@@ -32,6 +32,3 @@ def test_training_custom_activation(spark_context):
     spark_model.fit(rdd, epochs=1, batch_size=16, verbose=0, validation_split=0.1)
     assert spark_model.predict(x_test)
     assert spark_model.evaluate(x_test, y_test)
-
-
-
