@@ -121,11 +121,11 @@ class SparkModel(object):
             data = sc.parallelize(data)
         return self._predict(data)
 
-    def evaluate(self, x_test, y_test):
+    def evaluate(self, x_test, y_test, **kwargs):
         from pyspark.sql import SparkSession
         sc = SparkSession.builder.getOrCreate().sparkContext
         test_rdd = to_simple_rdd(sc, x_test, y_test)
-        return self._evaluate(test_rdd)
+        return self._evaluate(test_rdd, **kwargs)
 
     def fit(self, rdd: RDD, **kwargs):
         """
@@ -206,26 +206,34 @@ class SparkModel(object):
         predictions = rdd.mapPartitions(partial(_predict, yaml_model, custom_objects)).collect()
         return predictions
 
-    def _evaluate(self, rdd: RDD):
+    def _evaluate(self, rdd: RDD, **kwargs):
         yaml_model = self.master_network.to_yaml()
         optimizer = self.master_optimizer
         loss = self.master_loss
         weights = self.master_network.get_weights()
         weights = rdd.context.broadcast(weights)
         custom_objects = self.custom_objects
+        metrics = self.master_metrics
 
-        def _evaluate(model, optimizer, loss, custom_objects, data_iterator):
+        def _evaluate(model, optimizer, loss, custom_objects, metrics, kwargs, data_iterator):
             model = model_from_yaml(model, custom_objects)
+            model.compile(optimizer, loss, metrics)
             model.set_weights(weights.value)
-            model.compile(optimizer, loss)
             feature_iterator, label_iterator = tee(data_iterator, 2)
             x_test = np.asarray([x for x, y in feature_iterator])
             y_test = np.asarray([y for x, y in label_iterator])
-            return [model.evaluate(x_test, y_test)]
+            return [model.evaluate(x_test, y_test, **kwargs)]
         if self.num_workers:
             rdd = rdd.repartition(self.num_workers)
-        results = rdd.mapPartitions(partial(_evaluate, yaml_model, optimizer, loss, custom_objects)).mean()
-        return results
+        results = rdd.mapPartitions(partial(_evaluate, yaml_model, optimizer, loss, custom_objects, metrics, kwargs))
+        if not metrics:
+            # if no metrics, we can just return the scalar corresponding to the loss value
+            return results.mean()
+        else:
+            # if we do have metrics, we want to return a list of [loss value, metric value] - to match the keras API
+            loss_value = results.map(lambda x: x[0]).mean()
+            metric_value = results.map(lambda x: x[1]).mean()
+            return [loss_value, metric_value]
 
 
 def load_spark_model(file_name):

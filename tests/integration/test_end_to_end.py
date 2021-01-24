@@ -53,7 +53,8 @@ def test_training_classification(spark_context, mode, parameter_server_mode, mni
     assert [np.argmax(x) for x in predictions] == [np.argmax(x) for x in spark_model.master_network.predict(x_test)]
 
     # assert we get the same evaluation results when calling evaluate on keras model directly
-    assert isclose(evals, spark_model.master_network.evaluate(x_test, y_test)[0], abs_tol=0.01)
+    assert isclose(evals[0], spark_model.master_network.evaluate(x_test, y_test)[0], abs_tol=0.01)
+    assert isclose(evals[1], spark_model.master_network.evaluate(x_test, y_test)[1], abs_tol=0.01)
 
 
 # enumerate possible combinations for training mode and parameter server for a regression model
@@ -91,4 +92,5 @@ def test_training_regression(spark_context, mode, parameter_server_mode, boston_
     assert all(np.isclose(x, y, 0.01) for x, y in zip(predictions, spark_model.master_network.predict(x_test)))
 
     # assert we get the same evaluation results when calling evaluate on keras model directly
-    assert isclose(evals, spark_model.master_network.evaluate(x_test, y_test)[0], abs_tol=0.01)
+    assert isclose(evals[0], spark_model.master_network.evaluate(x_test, y_test)[0], abs_tol=0.01)
+    assert isclose(evals[1], spark_model.master_network.evaluate(x_test, y_test)[1], abs_tol=0.01)
