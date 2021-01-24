@@ -1,4 +1,4 @@
-from six.moves import cPickle as pickle
+import pickle
 from socket import gethostbyname, gethostname
 import os
 

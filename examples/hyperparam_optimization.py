@@ -1,8 +1,9 @@
+import pickle
+
 from pyspark import SparkContext, SparkConf
 
 from hyperopt import STATUS_OK
 from hyperas.distributions import choice, uniform
-import six.moves.cPickle as pickle
 
 from elephas.hyperparam import HyperParamModel
 
