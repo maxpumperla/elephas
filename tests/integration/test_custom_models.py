@@ -1,5 +1,5 @@
-
 import numpy as np
+import pytest
 from tensorflow.keras.backend import sigmoid
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
@@ -9,7 +9,8 @@ from elephas.spark_model import SparkModel
 from elephas.utils import to_simple_rdd
 
 
-def test_training_custom_activation(spark_context):
+@pytest.mark.parametrize('mode', ['synchronous', 'asynchronous', 'hogwild'])
+def test_training_custom_activation(mode, spark_context):
     def custom_activation(x):
         return sigmoid(x) + 1
 
@@ -27,7 +28,7 @@ def test_training_custom_activation(spark_context):
     y_train[:500] = 1
     rdd = to_simple_rdd(spark_context, x_train, y_train)
 
-    spark_model = SparkModel(model, frequency='epoch', mode='synchronous',
+    spark_model = SparkModel(model, frequency='epoch', mode=mode,
                              custom_objects={'custom_activation': custom_activation})
     spark_model.fit(rdd, epochs=1, batch_size=16, verbose=0, validation_split=0.1)
     assert spark_model.predict(x_test)
