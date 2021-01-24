@@ -30,7 +30,8 @@ def test_training_custom_activation(mode, spark_context):
     y_train[:500] = 1
     rdd = to_simple_rdd(spark_context, x_train, y_train)
 
-    spark_model = SparkModel(model, frequency='epoch', port=4000 + random.randint(0, 300),
+    spark_model = SparkModel(model, frequency='epoch', mode=mode,
+                             port=4000 + random.randint(0, 300),
                              custom_objects={'custom_activation': custom_activation})
     spark_model.fit(rdd, epochs=1, batch_size=16, verbose=0, validation_split=0.1)
     assert spark_model.predict(x_test)
