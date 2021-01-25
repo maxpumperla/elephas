@@ -130,7 +130,7 @@ x_test, y_test = ... # load test data
 predictions = spark_model.predict(x_test) # perform inference
 evaluation = spark_model.evaluate(x_test, y_test) # perform evaluation/scoring
 ```
-The paradigm is identical to the data parallelism in training, as the model is serialized and shipped to the workers and used to evaluate a chunk of the testing data.
+The paradigm is identical to the data parallelism in training, as the model is serialized and shipped to the workers and used to evaluate a chunk of the testing data. The predict method will take either a numpy array or an RDD.
 
 ## Spark MLlib integration
 
@@ -178,6 +178,19 @@ print(metrics.precision())
 print(metrics.recall())
 ```
 
+If the model utilizes custom activation function, layer, or loss function, that will need to be supplied using the `set_custom_objects` method:
+
+```python
+def custom_activation(x):
+    ...
+class CustomLayer(Layer):
+    ...
+model = Sequential()
+model.add(CustomLayer(...))
+
+estimator = ElephasEstimator(model, epochs=epochs, batch_size=batch_size)
+estimator.set_custom_objects({'custom_activation': custom_activation, 'CustomLayer': CustomLayer})
+```
 
 ## Distributed hyper-parameter optimization
 
