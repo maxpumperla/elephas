@@ -14,7 +14,7 @@ setup(name='elephas',
                         'hyperas',
                         'flask',
                         'h5py==2.10.0',
-                        'pyspark<=3.2'],
+                        'pyspark<3.2'],
       extras_require={
         'java': ['pydl4j>=0.1.3'],
         'tests': ['pytest', 'pytest-pep8', 'pytest-cov', 'pytest-spark', 'mock']
