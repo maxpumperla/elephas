@@ -2,10 +2,10 @@ from setuptools import setup
 from setuptools import find_packages
 
 setup(name='elephas',
-      version='1.2.0',
+      version='1.2.1',
       description='Deep learning on Spark with Keras',
       url='http://github.com/maxpumperla/elephas',
-      download_url='https://github.com/maxpumperla/elephas/tarball/1.2.0',
+      download_url='https://github.com/maxpumperla/elephas/tarball/1.2.1',
       author='Daniel Cahall',
       author_email='danielenricocahall@gmail.com',
       install_requires=['cython',
@@ -13,9 +13,8 @@ setup(name='elephas',
                         'keras==2.2.5',
                         'hyperas',
                         'flask',
-                        'six',
                         'h5py==2.10.0',
-                        'pyspark<=3.1'],
+                        'pyspark<=3.2'],
       extras_require={
         'java': ['pydl4j>=0.1.3'],
         'tests': ['pytest', 'pytest-pep8', 'pytest-cov', 'pytest-spark', 'mock']
