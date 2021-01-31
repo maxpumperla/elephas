@@ -1,4 +1,6 @@
 import warnings
+from functools import partial
+
 import numpy as np
 import copy
 import h5py
@@ -14,8 +16,7 @@ from tensorflow.keras.models import model_from_yaml
 from tensorflow.keras.optimizers import get as get_optimizer
 
 from .spark_model import SparkModel
-from .utils.model_utils import LossModelTypeMapper, compute_predictions
-from .utils.rdd_utils import from_vector
+from .utils.model_utils import LossModelTypeMapper, ModelType, determine_predict_function
 from .ml.adapter import df_to_simple_rdd
 from .ml.params import *
 
@@ -180,14 +181,32 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
         features_col = self.getFeaturesCol()
         new_schema = copy.deepcopy(df.schema)
         new_schema.add(StructField(output_col, StringType(), True))
+        rdd = df.rdd
 
-        rdd = df.rdd.coalesce(1)
-        features = np.asarray(rdd.map(lambda x: from_vector(x[features_col])).collect())
-        # Note that we collect, since executing this on the rdd would require model serialization once again
-        model = model_from_yaml(self.get_keras_model_config(), self.get_custom_objects())
-        model.set_weights(self.weights.value)
+        weights = self.weights
 
-        results_rdd = compute_predictions(model, self.model_type, rdd, features)
+        def extract_features_and_predict(model_yaml: str,
+                                         custom_objects: dict,
+                                         features_col: str,
+                                         model_type: ModelType,
+                                         data):
+            model = model_from_yaml(model_yaml, custom_objects)
+            model.set_weights(weights.value)
+            predict_function = determine_predict_function(model, model_type)
+            return predict_function(np.array([x[features_col] for x in data]))
+
+        predictions = rdd.mapPartitions(
+            partial(extract_features_and_predict,
+                    self.get_keras_model_config(),
+                    self.get_custom_objects(),
+                    features_col,
+                    self.model_type))
+        if self.model_type == ModelType.CLASSIFICATION:
+            predictions = predictions.map(lambda x: tuple(str(x)))
+        else:
+            predictions = predictions.map(lambda x: tuple([float(x)]))
+        results_rdd = rdd.zip(predictions).map(lambda x: x[0] + x[1])
+
         results_df = df.sql_ctx.createDataFrame(results_rdd, new_schema)
         results_df = results_df.withColumn(
             output_col, results_df[output_col].cast(DoubleType()))

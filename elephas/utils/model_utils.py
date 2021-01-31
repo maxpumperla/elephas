@@ -54,17 +54,6 @@ class LossModelTypeMapper(Singleton):
         self.__mapping.update({loss: model_type})
 
 
-def compute_predictions(model: tensorflow.keras.models.Model, model_type: ModelType, rdd: RDD, features: np.array):
-    predict_function = determine_predict_function(model, model_type)
-    predictions = rdd.ctx.parallelize(predict_function(features)).coalesce(1)
-    if model_type == ModelType.CLASSIFICATION:
-        predictions = predictions.map(lambda x: tuple(str(x)))
-    else:
-        predictions = predictions.map(lambda x: tuple([float(x)]))
-    results_rdd = rdd.zip(predictions).map(lambda x: x[0] + x[1])
-    return results_rdd
-
-
 def determine_predict_function(model: tensorflow.keras.models.Model,
                                model_type: ModelType):
     if model_type == ModelType.CLASSIFICATION:
