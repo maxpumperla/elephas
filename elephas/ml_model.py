@@ -178,7 +178,6 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
         """
         output_col = self.getOutputCol()
         label_col = self.getLabelCol()
-        features_col = self.getFeaturesCol()
         new_schema = copy.deepcopy(df.schema)
         new_schema.add(StructField(output_col, StringType(), True))
         rdd = df.rdd
@@ -199,7 +198,7 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
             partial(extract_features_and_predict,
                     self.get_keras_model_config(),
                     self.get_custom_objects(),
-                    features_col,
+                    self.getFeaturesCol(),
                     self.model_type))
         if self.model_type == ModelType.CLASSIFICATION:
             predictions = predictions.map(lambda x: tuple(str(x)))
