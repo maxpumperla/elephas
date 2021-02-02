@@ -15,6 +15,7 @@ from pyspark.sql.types import StringType, DoubleType, StructField
 from tensorflow.keras.models import model_from_yaml
 from tensorflow.keras.optimizers import get as get_optimizer
 
+from .mllib import from_vector
 from .spark_model import SparkModel
 from .utils.model_utils import LossModelTypeMapper, ModelType, determine_predict_function
 from .ml.adapter import df_to_simple_rdd
@@ -192,7 +193,7 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
             model = model_from_yaml(model_yaml, custom_objects)
             model.set_weights(weights.value)
             predict_function = determine_predict_function(model, model_type)
-            return predict_function(np.array([x[features_col] for x in data]))
+            return predict_function(np.stack([from_vector(x[features_col]) for x in data]))
 
         predictions = rdd.mapPartitions(
             partial(extract_features_and_predict,
