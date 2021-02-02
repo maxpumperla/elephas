@@ -172,7 +172,7 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
         f.close()
 
     def get_model(self):
-        return model_from_yaml(self.get_keras_model_config())
+        return model_from_yaml(self.get_keras_model_config(), self.get_custom_objects())
 
     def _transform(self, df):
         """Private transform method of a Transformer. This serves as batch-prediction method for our purposes.
