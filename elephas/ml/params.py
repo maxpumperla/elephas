@@ -243,3 +243,18 @@ class HasCustomObjects(Params):
 
     def get_custom_objects(self):
         return self.getOrDefault(self.custom_objects)
+
+
+class HasPredictClasses(Params):
+    def __init__(self):
+        super(HasPredictClasses, self).__init__()
+        self.predict_classes = Param(self, "predict_classes", "Flag to predict class or probability in classification "
+                                                              "problems")
+        self._setDefault(predict_classes=True)
+
+    def set_predict_classes(self, predict_classes):
+        self._paramMap[self.predict_classes] = predict_classes
+        return self
+
+    def get_predict_classes(self):
+        return self.getOrDefault(self.predict_classes)

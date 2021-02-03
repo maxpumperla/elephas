@@ -10,7 +10,7 @@ from pyspark.ml.param.shared import HasOutputCol, HasFeaturesCol, HasLabelCol
 from pyspark import keyword_only, RDD
 from pyspark.ml import Estimator, Model
 from pyspark.sql import DataFrame
-from pyspark.sql.types import StringType, DoubleType, StructField
+from pyspark.sql.types import StringType, DoubleType, StructField, ArrayType
 
 from tensorflow.keras.models import model_from_yaml
 from tensorflow.keras.optimizers import get as get_optimizer
@@ -20,12 +20,13 @@ from .spark_model import SparkModel
 from .utils.model_utils import LossModelTypeMapper, ModelType, determine_predict_function
 from .ml.adapter import df_to_simple_rdd
 from .ml.params import *
+from .utils.warnings import ElephasWarning
 
 
 class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasKerasModelConfig, HasFeaturesCol,
                        HasLabelCol, HasMode, HasEpochs, HasBatchSize, HasFrequency, HasVerbosity, HasNumberOfClasses,
                        HasNumberOfWorkers, HasOutputCol, HasLoss,
-                       HasMetrics, HasKerasOptimizerConfig, HasCustomObjects):
+                       HasMetrics, HasKerasOptimizerConfig, HasCustomObjects, HasPredictClasses):
     """
     SparkML Estimator implementation of an elephas model. This estimator takes all relevant arguments for model
     compilation and training.
@@ -108,6 +109,7 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
                                   keras_model_config=spark_model.master_network.to_yaml(),
                                   weights=weights,
                                   custom_objects=self.get_custom_objects(),
+                                  predict_classes=self.get_predict_classes(),
                                   loss=loss)
 
     def setFeaturesCol(self, value):
@@ -125,6 +127,12 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
                       " ElephasEstimator(outputCol='foo')", DeprecationWarning)
         return self._set(outputCol=value)
 
+    def set_predict_classes(self, predict_classes):
+        if LossModelTypeMapper().get_model_type(self.get_loss()) == ModelType.REGRESSION:
+            warnings.warn("Setting `predict_classes` doesn't have any effect when training a regression problem.",
+                          ElephasWarning)
+        super().set_predict_classes(predict_classes)
+
 
 def load_ml_estimator(file_name):
     f = h5py.File(file_name, mode='r')
@@ -133,7 +141,8 @@ def load_ml_estimator(file_name):
     return ElephasEstimator(**config)
 
 
-class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, HasFeaturesCol, HasCustomObjects):
+class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, HasFeaturesCol, HasCustomObjects,
+                         HasPredictClasses):
     """SparkML Transformer implementation. Contains a trained model,
     with which new feature data can be transformed into labels.
     """
@@ -178,21 +187,19 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
         """Private transform method of a Transformer. This serves as batch-prediction method for our purposes.
         """
         output_col = self.getOutputCol()
-        label_col = self.getLabelCol()
         new_schema = copy.deepcopy(df.schema)
-        new_schema.add(StructField(output_col, StringType(), True))
         rdd = df.rdd
-
         weights = self.weights
 
         def extract_features_and_predict(model_yaml: str,
                                          custom_objects: dict,
                                          features_col: str,
                                          model_type: ModelType,
+                                         predict_classes: bool,
                                          data):
             model = model_from_yaml(model_yaml, custom_objects)
             model.set_weights(weights.value)
-            predict_function = determine_predict_function(model, model_type)
+            predict_function = determine_predict_function(model, model_type, predict_classes)
             return predict_function(np.stack([from_vector(x[features_col]) for x in data]))
 
         predictions = rdd.mapPartitions(
@@ -200,18 +207,20 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
                     self.get_keras_model_config(),
                     self.get_custom_objects(),
                     self.getFeaturesCol(),
-                    self.model_type))
-        if self.model_type == ModelType.CLASSIFICATION:
-            predictions = predictions.map(lambda x: tuple(str(x)))
-        else:
+                    self.model_type,
+                    self.get_predict_classes()))
+        if (self.model_type == ModelType.CLASSIFICATION and self.get_predict_classes()) \
+                or self.model_type == ModelType.REGRESSION:
             predictions = predictions.map(lambda x: tuple([float(x)]))
+            output_col_field = StructField(output_col, DoubleType(), True)
+        else:
+            # we're doing classification and predicting class probabilities
+            predictions = predictions.map(lambda x: tuple([x.tolist()]))
+            output_col_field = StructField(output_col, ArrayType(DoubleType()), True)
         results_rdd = rdd.zip(predictions).map(lambda x: x[0] + x[1])
 
+        new_schema.add(output_col_field)
         results_df = df.sql_ctx.createDataFrame(results_rdd, new_schema)
-        results_df = results_df.withColumn(
-            output_col, results_df[output_col].cast(DoubleType()))
-        results_df = results_df.withColumn(
-            label_col, results_df[label_col].cast(DoubleType()))
 
         return results_df
 

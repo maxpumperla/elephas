@@ -55,8 +55,9 @@ class LossModelTypeMapper(Singleton):
 
 
 def determine_predict_function(model: tensorflow.keras.models.Model,
-                               model_type: ModelType):
-    if model_type == ModelType.CLASSIFICATION:
+                               model_type: ModelType,
+                               predict_classes: bool = True):
+    if model_type == ModelType.CLASSIFICATION and predict_classes:
         if isinstance(model, tensorflow.keras.models.Sequential):
             predict_function = model.predict_classes
         else:
