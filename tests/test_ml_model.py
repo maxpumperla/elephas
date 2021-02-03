@@ -276,10 +276,10 @@ def test_predict_classes_probability(spark_context, classification_model, mnist_
     pipeline = Pipeline(stages=[estimator])
     fitted_pipeline = pipeline.fit(df)
 
-    # Evaluate Spark model by evaluating the underlying model
-    prediction = fitted_pipeline.transform(test_df)
-    pnl = prediction.select("label", "prediction")
-    pnl.show(100)
+    results = fitted_pipeline.transform(test_df)
+    # we should have an array of 10 elements in the prediction column, since we have 10 classes
+    # and therefore 10 probabilities
+    assert len(results.take(1)[0].prediction) == 10
 
 
 def test_set_predict_classes_regression_warning(spark_context, regression_model):
