@@ -1,23 +1,22 @@
+import json
 from functools import partial
 from itertools import tee
 from typing import Union
 
-import pyspark
 import h5py
-import json
-
 import numpy as np
-from tensorflow.keras.models import model_from_yaml
+import pyspark
 from pyspark import RDD
-from tensorflow.keras.optimizers import serialize as serialize_optimizer
-from tensorflow.keras.optimizers import get as get_optimizer
 from tensorflow.keras.models import load_model
+from tensorflow.keras.models import model_from_yaml
+from tensorflow.keras.optimizers import get as get_optimizer
+from tensorflow.keras.optimizers import serialize as serialize_optimizer
 
+from .mllib import to_matrix, from_matrix, to_vector, from_vector
 from .parameter.factory import ClientServerFactory
-from .utils import subtract_params
 from .utils import lp_to_simple_rdd, to_simple_rdd
 from .utils import model_to_dict
-from .mllib import to_matrix, from_matrix, to_vector, from_vector
+from .utils import subtract_params, divide_by
 from .worker import AsynchronousSparkWorker, SparkWorker
 
 
@@ -181,8 +180,10 @@ class SparkModel(object):
                                  optimizer, loss, metrics, custom)
             gradients = rdd.mapPartitions(worker.train).collect()
             new_parameters = self._master_network.get_weights()
-            for grad in gradients:  # simply accumulate gradients one by one
-                new_parameters = subtract_params(new_parameters, grad)
+            number_of_sub_models = len(gradients)
+            for grad in gradients:  # Accumulate simple average gradients one by one
+                weighted_grad = divide_by(grad, number_of_sub_models)
+                new_parameters = subtract_params(new_parameters, weighted_grad)
             print('>>> Synchronous training complete.')
         else:
             raise ValueError("Unsupported mode {}".format(self.mode))
@@ -203,6 +204,7 @@ class SparkModel(object):
             model.set_weights(weights.value)
             data = np.array([x for x in data])
             return model.predict(data)
+
         predictions = rdd.mapPartitions(partial(_predict, yaml_model, custom_objects)).collect()
         return predictions
 
@@ -223,6 +225,7 @@ class SparkModel(object):
             x_test = np.asarray([x for x, y in feature_iterator])
             y_test = np.asarray([y for x, y in label_iterator])
             return [model.evaluate(x_test, y_test, **kwargs)]
+
         if self.num_workers:
             rdd = rdd.repartition(self.num_workers)
         results = rdd.mapPartitions(partial(_evaluate, yaml_model, optimizer, loss, custom_objects, metrics, kwargs))
