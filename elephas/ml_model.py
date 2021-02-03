@@ -7,10 +7,10 @@ import h5py
 import json
 
 from pyspark.ml.param.shared import HasOutputCol, HasFeaturesCol, HasLabelCol
-from pyspark import keyword_only, RDD
+from pyspark import keyword_only
 from pyspark.ml import Estimator, Model
 from pyspark.sql import DataFrame
-from pyspark.sql.types import StringType, DoubleType, StructField, ArrayType
+from pyspark.sql.types import DoubleType, StructField, ArrayType
 
 from tensorflow.keras.models import model_from_yaml
 from tensorflow.keras.optimizers import get as get_optimizer
