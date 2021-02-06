@@ -10,6 +10,8 @@ from elephas.ml.adapter import to_data_frame
 from pyspark.mllib.evaluation import MulticlassMetrics, RegressionMetrics
 from pyspark.ml import Pipeline
 
+from elephas.utils.warnings import ElephasWarning
+
 
 def test_serialization_transformer(classification_model):
     transformer = ElephasTransformer()
@@ -242,4 +244,48 @@ def test_custom_objects(spark_context, boston_housing_dataset):
     prediction = fitted_pipeline.transform(test_df)
 
 
+def test_predict_classes_probability(spark_context, classification_model, mnist_data):
+    batch_size = 64
+    nb_classes = 10
+    epochs = 1
 
+    x_train, y_train, x_test, y_test = mnist_data
+    x_train = x_train[:1000]
+    y_train = y_train[:1000]
+    df = to_data_frame(spark_context, x_train, y_train, categorical=True)
+    test_df = to_data_frame(spark_context, x_test, y_test, categorical=True)
+
+    sgd = optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
+    sgd_conf = optimizers.serialize(sgd)
+
+    # Initialize Spark ML Estimator
+    estimator = ElephasEstimator()
+    estimator.set_keras_model_config(classification_model.to_yaml())
+    estimator.set_optimizer_config(sgd_conf)
+    estimator.set_mode("synchronous")
+    estimator.set_loss("categorical_crossentropy")
+    estimator.set_metrics(['acc'])
+    estimator.set_predict_classes(False)
+    estimator.set_epochs(epochs)
+    estimator.set_batch_size(batch_size)
+    estimator.set_validation_split(0.1)
+    estimator.set_categorical_labels(True)
+    estimator.set_nb_classes(nb_classes)
+
+    # Fitting a model returns a Transformer
+    pipeline = Pipeline(stages=[estimator])
+    fitted_pipeline = pipeline.fit(df)
+
+    results = fitted_pipeline.transform(test_df)
+    # we should have an array of 10 elements in the prediction column, since we have 10 classes
+    # and therefore 10 probabilities
+    assert len(results.take(1)[0].prediction) == 10
+
+
+def test_set_predict_classes_regression_warning(spark_context, regression_model):
+    with pytest.warns(ElephasWarning):
+        estimator = ElephasEstimator()
+        estimator.set_loss("mae")
+        estimator.set_metrics(['mae'])
+        estimator.set_categorical_labels(False)
+        estimator.set_predict_classes(True)
