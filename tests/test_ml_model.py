@@ -10,6 +10,7 @@ from elephas.ml.adapter import to_data_frame
 from pyspark.mllib.evaluation import MulticlassMetrics, RegressionMetrics
 from pyspark.ml import Pipeline
 
+from elephas.utils.model_utils import ModelType
 from elephas.utils.warnings import ElephasWarning
 
 
@@ -29,6 +30,16 @@ def test_serialization_estimator(classification_model):
     estimator.save("test.h5")
     loaded_model = load_ml_estimator("test.h5")
     assert loaded_model.get_model().to_yaml() == classification_model.to_yaml()
+
+
+def test_serialization_transformer_and_predict(spark_context, classification_model, mnist_data):
+    _, _, x_test, y_test = mnist_data
+    df = to_data_frame(spark_context, x_test, y_test, categorical=True)
+    transformer = ElephasTransformer(weights=classification_model.weights, model_type=ModelType.CLASSIFICATION)
+    transformer.set_keras_model_config(classification_model.to_yaml())
+    transformer.save("test.h5")
+    loaded_transformer = load_ml_transformer("test.h5")
+    loaded_transformer.transform(df)
 
 
 def test_spark_ml_model_classification(spark_context, classification_model, mnist_data):

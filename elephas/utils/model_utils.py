@@ -1,3 +1,4 @@
+import json
 from enum import Enum
 
 import tensorflow
@@ -67,3 +68,18 @@ def determine_predict_function(model: tensorflow.keras.models.Model,
         predict_function = model.predict
 
     return predict_function
+
+
+class ModelTypeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if obj in [e for e in ModelType]:
+            return {"__enum__": str(obj)}
+        return json.JSONEncoder.default(self, obj)
+
+
+def as_enum(d):
+    if "__enum__" in d:
+        name, member = d["__enum__"].split(".")
+        return getattr(ModelType, member)
+    else:
+        return d

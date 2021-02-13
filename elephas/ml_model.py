@@ -17,7 +17,7 @@ from tensorflow.keras.optimizers import get as get_optimizer
 
 from .mllib import from_vector
 from .spark_model import SparkModel
-from .utils.model_utils import LossModelTypeMapper, ModelType, determine_predict_function
+from .utils.model_utils import LossModelTypeMapper, ModelType, determine_predict_function, ModelTypeEncoder, as_enum
 from .ml.adapter import df_to_simple_rdd
 from .ml.params import *
 from .utils.warnings import ElephasWarning
@@ -110,7 +110,7 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
                                   weights=weights,
                                   custom_objects=self.get_custom_objects(),
                                   predict_classes=self.get_predict_classes(),
-                                  loss=loss)
+                                  model_type=LossModelTypeMapper().get_model_type(loss))
 
     def setFeaturesCol(self, value):
         warnings.warn("setFeaturesCol is deprecated in Spark 3.0.x+ - please supply featuresCol in the constructor i.e;"
@@ -134,7 +134,7 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
         super().set_predict_classes(predict_classes)
 
 
-def load_ml_estimator(file_name):
+def load_ml_estimator(file_name: str) -> ElephasEstimator:
     f = h5py.File(file_name, mode='r')
     elephas_conf = json.loads(f.attrs.get('distributed_config'))
     config = elephas_conf.get('config')
@@ -153,9 +153,9 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
         if "weights" in kwargs.keys():
             # Strip model weights from parameters to init Transformer
             self.weights = kwargs.pop('weights')
-        if "loss" in kwargs.keys():
+        if "model_type" in kwargs.keys():
             # Extract loss from parameters
-            self.model_type = LossModelTypeMapper().get_model_type(kwargs.pop('loss'))
+            self.model_type = kwargs.pop('model_type')
         self.set_params(**kwargs)
 
     @keyword_only
@@ -167,7 +167,9 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
     def get_config(self):
         return {'keras_model_config': self.get_keras_model_config(),
                 'labelCol': self.getLabelCol(),
-                'outputCol': self.getOutputCol()}
+                'outputCol': self.getOutputCol(),
+                'weights': [weight.numpy().tolist() for weight in getattr(self, 'weights', [])],
+                'model_type': getattr(self, 'model_type', None)}
 
     def save(self, file_name: str):
         f = h5py.File(file_name, mode='w')
@@ -175,7 +177,7 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
         f.attrs['distributed_config'] = json.dumps({
             'class_name': self.__class__.__name__,
             'config': self.get_config()
-        }).encode('utf8')
+        }, cls=ModelTypeEncoder).encode('utf8')
 
         f.flush()
         f.close()
@@ -227,6 +229,6 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
 
 def load_ml_transformer(file_name: str):
     f = h5py.File(file_name, mode='r')
-    elephas_conf = json.loads(f.attrs.get('distributed_config'))
+    elephas_conf = json.loads(f.attrs.get('distributed_config'), object_hook=as_enum)
     config = elephas_conf.get('config')
     return ElephasTransformer(**config)
