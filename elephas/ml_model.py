@@ -151,7 +151,7 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
         super(ElephasTransformer, self).__init__()
         if "weights" in kwargs.keys():
             # Strip model weights from parameters to init Transformer
-            self.weights = kwargs.pop('weights')
+            self.weights = [np.array(weight) for weight in kwargs.pop('weights')]
         if "model_type" in kwargs.keys():
             # Extract loss from parameters
             self.model_type = kwargs.pop('model_type')
@@ -164,13 +164,10 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
         return self._set(**kwargs)
 
     def get_config(self):
-        weights = getattr(self, 'weights', [])
-        if isinstance(weights, Broadcast):
-            weights = weights.value
         return {'keras_model_config': self.get_keras_model_config(),
                 'labelCol': self.getLabelCol(),
                 'outputCol': self.getOutputCol(),
-                'weights': [weight.tolist() for weight in weights],
+                'weights': [weight.tolist() for weight in getattr(self, 'weights', [])],
                 'model_type': getattr(self, 'model_type', None)}
 
     def save(self, file_name: str):
