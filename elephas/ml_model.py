@@ -7,7 +7,7 @@ import h5py
 import json
 
 from pyspark.ml.param.shared import HasOutputCol, HasFeaturesCol, HasLabelCol
-from pyspark import keyword_only
+from pyspark import keyword_only, Broadcast
 from pyspark.ml import Estimator, Model
 from pyspark.sql import DataFrame
 from pyspark.sql.types import DoubleType, StructField, ArrayType
@@ -102,12 +102,11 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
                         validation_split=self.get_validation_split())
 
         model_weights = spark_model.master_network.get_weights()
-        weights = simple_rdd.ctx.broadcast(model_weights)
         return ElephasTransformer(labelCol=self.getLabelCol(),
                                   outputCol=self.getOutputCol(),
                                   featuresCol=self.getFeaturesCol(),
                                   keras_model_config=spark_model.master_network.to_yaml(),
-                                  weights=weights,
+                                  weights=model_weights,
                                   custom_objects=self.get_custom_objects(),
                                   predict_classes=self.get_predict_classes(),
                                   model_type=LossModelTypeMapper().get_model_type(loss))
@@ -165,10 +164,13 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
         return self._set(**kwargs)
 
     def get_config(self):
+        weights = getattr(self, 'weights', [])
+        if isinstance(weights, Broadcast):
+            weights = weights.value
         return {'keras_model_config': self.get_keras_model_config(),
                 'labelCol': self.getLabelCol(),
                 'outputCol': self.getOutputCol(),
-                'weights': [weight.numpy().tolist() for weight in getattr(self, 'weights', [])],
+                'weights': [weight.tolist() for weight in weights],
                 'model_type': getattr(self, 'model_type', None)}
 
     def save(self, file_name: str):
@@ -191,7 +193,7 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
         output_col = self.getOutputCol()
         new_schema = copy.deepcopy(df.schema)
         rdd = df.rdd
-        weights = self.weights
+        weights = rdd.ctx.broadcast(self.weights)
 
         def extract_features_and_predict(model_yaml: str,
                                          custom_objects: dict,
