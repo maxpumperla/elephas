@@ -202,7 +202,10 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
             model = model_from_yaml(model_yaml, custom_objects)
             model.set_weights(weights.value)
             predict_function = determine_predict_function(model, model_type, predict_classes)
-            return predict_function(np.stack([from_vector(x[features_col]) for x in data]))
+            for row in data:
+                features_np = np.array([from_vector(row[features_col])])
+                yield predict_function(features_np)[0]
+            #return predict_function(np.stack([from_vector(x[features_col]) for x in data]))
 
         predictions = rdd.mapPartitions(
             partial(extract_features_and_predict,
