@@ -202,9 +202,26 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
             model = model_from_yaml(model_yaml, custom_objects)
             model.set_weights(weights.value)
             predict_function = determine_predict_function(model, model_type, predict_classes)
+            batch_size = 10000
+            batch = []
+            preds = []
+            num_rows = 0
             for row in data:
-                features_np = np.array([from_vector(row[features_col])])
-                yield predict_function(features_np)[0]
+                num_rows += 1
+                if len(batch) < batch_size:
+                    batch.append(from_vector(row[features_col]))
+                else:
+                    batch_np = np.array(batch)
+                    pred = predict_function(batch_np)
+                    preds.append(pred)
+                    batch = [from_vector(row[features_col])]
+            if len(batch) > 0:
+                batch_np = np.array(batch)
+                pred = predict_function(batch_np)
+                preds.append(pred)
+
+            res = np.vstack(preds)
+            return res
             #return predict_function(np.stack([from_vector(x[features_col]) for x in data]))
 
         predictions = rdd.mapPartitions(
