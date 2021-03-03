@@ -258,3 +258,16 @@ class HasPredictClasses(Params):
 
     def get_predict_classes(self):
         return self.getOrDefault(self.predict_classes)
+
+class HasInferenceBatchSize(Params):
+    def __init__(self):
+        super(HasInferenceBatchSize, self).__init__()
+        self.inference_batch_size = Param(self, "inference_batch_size", "Batch inference could help limit memory consumption in executors")
+        self._setDefault(inference_batch_size=None)
+
+    def set_inference_batch_size(self, batch_size):
+        self._paramMap[self.inference_batch_size] = batch_size
+        return self
+
+    def get_inference_batch_size(self):
+        return self.getOrDefault(self.inference_batch_size)
