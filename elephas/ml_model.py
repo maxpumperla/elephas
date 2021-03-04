@@ -166,8 +166,9 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
     def get_config(self):
         return {'keras_model_config': self.get_keras_model_config(),
                 'labelCol': self.getLabelCol(),
+                'featuresCol': self.getFeaturesCol(),
                 'outputCol': self.getOutputCol(),
-                'weights': [weight.numpy().tolist() for weight in getattr(self, 'weights', [])],
+                'weights': [weight.tolist() for weight in getattr(self, 'weights', [])],
                 'model_type': getattr(self, 'model_type', None)}
 
     def save(self, file_name: str):

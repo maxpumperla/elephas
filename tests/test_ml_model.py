@@ -35,7 +35,8 @@ def test_serialization_estimator(classification_model):
 def test_serialization_transformer_and_predict(spark_context, classification_model, mnist_data):
     _, _, x_test, y_test = mnist_data
     df = to_data_frame(spark_context, x_test, y_test, categorical=True)
-    transformer = ElephasTransformer(weights=classification_model.weights, model_type=ModelType.CLASSIFICATION)
+    weights = [weight.numpy() for weight in classification_model.weights]
+    transformer = ElephasTransformer(weights=weights, model_type=ModelType.CLASSIFICATION)
     transformer.set_keras_model_config(classification_model.to_yaml())
     transformer.save("test.h5")
     loaded_transformer = load_ml_transformer("test.h5")
