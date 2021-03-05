@@ -103,14 +103,17 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
 
         model_weights = spark_model.master_network.get_weights()
         weights = simple_rdd.ctx.broadcast(model_weights)
-        return ElephasTransformer(labelCol=self.getLabelCol(),
-                                  outputCol=self.getOutputCol(),
-                                  featuresCol=self.getFeaturesCol(),
-                                  keras_model_config=spark_model.master_network.to_yaml(),
-                                  weights=weights,
-                                  custom_objects=self.get_custom_objects(),
-                                  predict_classes=self.get_predict_classes(),
-                                  model_type=LossModelTypeMapper().get_model_type(loss))
+        return [ElephasTransformer(labelCol=self.getLabelCol(),
+                                   outputCol=self.getOutputCol(),
+                                   featuresCol=self.getFeaturesCol(),
+                                   keras_model_config=spark_model.master_network.to_yaml(),
+                                   weights=weights,
+                                   custom_objects=self.get_custom_objects(),
+                                   predict_classes=self.get_predict_classes(),
+                                   model_type=LossModelTypeMapper().get_model_type(loss)),
+                spark_model.training_histories
+                ]
+
 
     def setFeaturesCol(self, value):
         warnings.warn("setFeaturesCol is deprecated in Spark 3.0.x+ - please supply featuresCol in the constructor i.e;"

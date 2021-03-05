@@ -39,7 +39,7 @@ class SparkModel(object):
         :param batch_size: batch size used for training and inference
         :param port: port used in case of 'http' parameter server mode
         """
-
+        self._training_histories = []
         self._master_network = model
         if not hasattr(model, "loss"):
             raise Exception(
@@ -96,6 +96,10 @@ class SparkModel(object):
 
         f.flush()
         f.close()
+
+    @property
+    def training_histories(self):
+        return self._training_histories
 
     @property
     def master_network(self):
@@ -178,10 +182,12 @@ class SparkModel(object):
         elif self.mode == 'synchronous':
             worker = SparkWorker(yaml, parameters, train_config,
                                  optimizer, loss, metrics, custom)
-            gradients = rdd.mapPartitions(worker.train).collect()
+            training_outcomes = rdd.mapPartitions(worker.train).collect()
             new_parameters = self._master_network.get_weights()
-            number_of_sub_models = len(gradients)
-            for grad in gradients:  # Accumulate simple average gradients one by one
+            number_of_sub_models = len(training_outcomes)
+            for training_outcome in training_outcomes:
+                grad = training_outcome[0]
+                self.training_histories.append(training_outcome[1])
                 weighted_grad = divide_by(grad, number_of_sub_models)
                 new_parameters = subtract_params(new_parameters, weighted_grad)
             print('>>> Synchronous training complete.')
