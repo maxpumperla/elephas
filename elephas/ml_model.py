@@ -231,4 +231,5 @@ def load_ml_transformer(file_name: str):
     f = h5py.File(file_name, mode='r')
     elephas_conf = json.loads(f.attrs.get('distributed_config'), object_hook=as_enum)
     config = elephas_conf.get('config')
+    config['weights'] = [np.array(weight) for weight in config['weights']]
     return ElephasTransformer(**config)
