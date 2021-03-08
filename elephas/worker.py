@@ -26,6 +26,7 @@ class SparkWorker(object):
     def train(self, data_iterator):
         """Train a keras model on a worker
         """
+        history = None
         optimizer = get_optimizer(self.master_optimizer)
         self.model = model_from_yaml(self.yaml, self.custom_objects)
         self.model.compile(optimizer=optimizer,
@@ -42,11 +43,14 @@ class SparkWorker(object):
 
         weights_before_training = self.model.get_weights()
         if x_train.shape[0] > self.train_config.get('batch_size'):
-            self.model.fit(x_train, y_train, **self.train_config)
+            history = self.model.fit(x_train, y_train, **self.train_config)
         weights_after_training = self.model.get_weights()
         deltas = subtract_params(
             weights_before_training, weights_after_training)
-        yield deltas
+        if history is not None:
+            yield [deltas, history.history]
+        else:
+            yield [deltas, None]
 
 
 class AsynchronousSparkWorker(object):
