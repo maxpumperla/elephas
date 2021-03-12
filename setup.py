@@ -2,10 +2,10 @@ from setuptools import setup
 from setuptools import find_packages
 
 setup(name='elephas',
-      version='1.4.2',
+      version='1.4.3',
       description='Deep learning on Spark with Keras',
       url='http://github.com/maxpumperla/elephas',
-      download_url='https://github.com/maxpumperla/elephas/tarball/1.4.2',
+      download_url='https://github.com/maxpumperla/elephas/tarball/1.4.3',
       author='Daniel Cahall',
       author_email='danielenricocahall@gmail.com',
       install_requires=['cython',
