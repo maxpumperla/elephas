@@ -1,25 +1,23 @@
+import copy
+import json
 import warnings
 from functools import partial
 
-import numpy as np
-import copy
 import h5py
-import json
-
-from pyspark.ml.param.shared import HasOutputCol, HasFeaturesCol, HasLabelCol
+import numpy as np
 from pyspark import keyword_only
 from pyspark.ml import Estimator, Model
+from pyspark.ml.param.shared import HasOutputCol, HasFeaturesCol, HasLabelCol
 from pyspark.sql import DataFrame
 from pyspark.sql.types import DoubleType, StructField, ArrayType
-
 from tensorflow.keras.models import model_from_yaml
 from tensorflow.keras.optimizers import get as get_optimizer
 
+from .ml.adapter import df_to_simple_rdd
+from .ml.params import *
 from .mllib import from_vector
 from .spark_model import SparkModel
 from .utils.model_utils import LossModelTypeMapper, ModelType, determine_predict_function, ModelTypeEncoder, as_enum
-from .ml.adapter import df_to_simple_rdd
-from .ml.params import *
 from .utils.warnings import ElephasWarning
 
 
@@ -102,16 +100,15 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
                         validation_split=self.get_validation_split())
 
         model_weights = spark_model.master_network.get_weights()
-        return [ElephasTransformer(labelCol=self.getLabelCol(),
-                                   outputCol=self.getOutputCol(),
-                                   featuresCol=self.getFeaturesCol(),
-                                   keras_model_config=spark_model.master_network.to_yaml(),
-                                   weights=model_weights,
-                                   custom_objects=self.get_custom_objects(),
-                                   predict_classes=self.get_predict_classes(),
-                                   model_type=LossModelTypeMapper().get_model_type(loss)),
-                spark_model.training_histories
-                ]
+        return ElephasTransformer(labelCol=self.getLabelCol(),
+                                  outputCol=self.getOutputCol(),
+                                  featuresCol=self.getFeaturesCol(),
+                                  keras_model_config=spark_model.master_network.to_yaml(),
+                                  weights=model_weights,
+                                  custom_objects=self.get_custom_objects(),
+                                  predict_classes=self.get_predict_classes(),
+                                  model_type=LossModelTypeMapper().get_model_type(loss),
+                                  history=spark_model.training_histories)
 
     def setFeaturesCol(self, value):
         warnings.warn("setFeaturesCol is deprecated in Spark 3.0.x+ - please supply featuresCol in the constructor i.e;"
@@ -157,7 +154,14 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
         if "model_type" in kwargs.keys():
             # Extract loss from parameters
             self.model_type = kwargs.pop('model_type')
+        if "history" in kwargs.keys():
+            self._history = kwargs.pop("history")
+        else:
+            self._history = []
         self.set_params(**kwargs)
+
+    def get_history(self):
+        return self._history
 
     @keyword_only
     def set_params(self, **kwargs):
