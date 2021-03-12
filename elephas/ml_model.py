@@ -154,13 +154,11 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
         if "model_type" in kwargs.keys():
             # Extract loss from parameters
             self.model_type = kwargs.pop('model_type')
-        if "history" in kwargs.keys():
-            self._history = kwargs.pop("history")
-        else:
-            self._history = []
+        self._history = kwargs.pop("history", [])
         self.set_params(**kwargs)
 
-    def get_history(self):
+    @property
+    def history(self):
         return self._history
 
     @keyword_only
@@ -199,34 +197,39 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
         rdd = df.rdd
         weights = rdd.ctx.broadcast(self.weights)
 
+        def batched_prediction(data, inference_batch_size, features_col, predict_function) -> np.ndarray:
+            # Do prediction in batches instead of materializing the whole partition at once
+            batch = []
+            preds = []
+            for row in data:
+                if len(batch) < inference_batch_size:
+                    batch.append(from_vector(row[features_col]))
+                else:
+                    batch_np = np.array(batch)
+                    pred = predict_function(batch_np)
+                    preds.append(pred)
+                    batch = [from_vector(row[features_col])]
+            if len(batch) > 0:
+                batch_np = np.array(batch)
+                pred = predict_function(batch_np)
+                preds.append(pred)
+
+            res = np.vstack(preds)
+            return res
+
         def extract_features_and_predict(model_yaml: str,
                                          custom_objects: dict,
                                          features_col: str,
                                          model_type: ModelType,
                                          predict_classes: bool,
-                                         batch_size: int,
-                                         data):
+                                         data,
+                                         inference_batch_size: int = None):
             model = model_from_yaml(model_yaml, custom_objects)
             model.set_weights(weights.value)
             predict_function = determine_predict_function(model, model_type, predict_classes)
-            if batch_size is not None and batch_size > 0:
-                batch = []
-                preds = []
-                for row in data:
-                    if len(batch) < batch_size:
-                        batch.append(from_vector(row[features_col]))
-                    else:
-                        batch_np = np.array(batch)
-                        pred = predict_function(batch_np)
-                        preds.append(pred)
-                        batch = [from_vector(row[features_col])]
-                if len(batch) > 0:
-                    batch_np = np.array(batch)
-                    pred = predict_function(batch_np)
-                    preds.append(pred)
 
-                res = np.vstack(preds)
-                return res
+            if inference_batch_size is not None and inference_batch_size > 0:
+                return batched_prediction(data, inference_batch_size, features_col, predict_function)
             else:
                 return predict_function(np.stack([from_vector(x[features_col]) for x in data]))
 
@@ -237,7 +240,7 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
                     self.getFeaturesCol(),
                     self.model_type,
                     self.get_predict_classes(),
-                    self.get_inference_batch_size()
+                    inference_batch_size=self.get_inference_batch_size()
                     )
         )
         if (self.model_type == ModelType.CLASSIFICATION and self.get_predict_classes()) \

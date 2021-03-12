@@ -47,7 +47,7 @@ class SparkWorker(object):
         weights_after_training = self.model.get_weights()
         deltas = subtract_params(
             weights_before_training, weights_after_training)
-        if history is not None:
+        if history:
             yield [deltas, history.history]
         else:
             yield [deltas, None]

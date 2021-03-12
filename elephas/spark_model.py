@@ -186,8 +186,8 @@ class SparkModel(object):
             new_parameters = self._master_network.get_weights()
             number_of_sub_models = len(training_outcomes)
             for training_outcome in training_outcomes:
-                grad = training_outcome[0]
-                self.training_histories.append(training_outcome[1])
+                grad, history = training_outcome
+                self.training_histories.append(history)
                 weighted_grad = divide_by(grad, number_of_sub_models)
                 new_parameters = subtract_params(new_parameters, weighted_grad)
             print('>>> Synchronous training complete.')
