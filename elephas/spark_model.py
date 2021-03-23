@@ -10,7 +10,7 @@ from pyspark import RDD
 from tensorflow.keras.models import load_model
 from tensorflow.keras.models import model_from_yaml
 from tensorflow.keras.optimizers import get as get_optimizer
-from tensorflow.keras.optimizers import serialize as serialize_optimizer
+from tensorflow.keras.optimizers import serialize as serialize_optimizer, deserialize as deserialize_optimizer
 
 from .mllib import to_matrix, from_matrix, to_vector, from_vector
 from .parameter.factory import ClientServerFactory
@@ -158,7 +158,7 @@ class SparkModel(object):
             self.start_server()
         train_config = kwargs
         freq = self.frequency
-        optimizer = self.master_optimizer
+        optimizer = deserialize_optimizer(self.master_optimizer)
         loss = self.master_loss
         metrics = self.master_metrics
         custom = self.custom_objects
@@ -210,7 +210,7 @@ class SparkModel(object):
 
     def _evaluate(self, rdd: RDD, **kwargs):
         yaml_model = self.master_network.to_yaml()
-        optimizer = self.master_optimizer
+        optimizer = deserialize_optimizer(self.master_optimizer)
         loss = self.master_loss
         weights = self.master_network.get_weights()
         weights = rdd.context.broadcast(weights)
