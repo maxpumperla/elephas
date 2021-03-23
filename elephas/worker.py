@@ -37,10 +37,6 @@ class SparkWorker(object):
         x_train = np.asarray([x for x, y in feature_iterator])
         y_train = np.asarray([y for x, y in label_iterator])
 
-        self.model.compile(optimizer=get_optimizer(self.master_optimizer),
-                           loss=self.master_loss,
-                           metrics=self.master_metrics)
-
         weights_before_training = self.model.get_weights()
         if x_train.shape[0] > self.train_config.get('batch_size'):
             history = self.model.fit(x_train, y_train, **self.train_config)
