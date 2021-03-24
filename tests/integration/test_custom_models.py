@@ -1,3 +1,5 @@
+import random
+
 import numpy as np
 import pytest
 from tensorflow.keras.backend import sigmoid
@@ -29,7 +31,8 @@ def test_training_custom_activation(mode, spark_context):
     rdd = to_simple_rdd(spark_context, x_train, y_train)
 
     spark_model = SparkModel(model, frequency='epoch', mode=mode,
-                             custom_objects={'custom_activation': custom_activation})
+                             custom_objects={'custom_activation': custom_activation},
+                             port=4000 + random.randint(0, 500))
     spark_model.fit(rdd, epochs=1, batch_size=16, verbose=0, validation_split=0.1)
     assert spark_model.predict(x_test)
     assert spark_model.evaluate(x_test, y_test)
