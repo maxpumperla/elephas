@@ -44,7 +44,7 @@ class SparkModel(object):
         if not hasattr(model, "loss"):
             raise Exception(
                 "Compile your Keras model before initializing an Elephas model with it")
-        metrics = [metric.name for metric in model.metrics]
+        metrics = model.compiled_metrics._metrics
         loss = model.loss
         optimizer = serialize_optimizer(model.optimizer)
 
