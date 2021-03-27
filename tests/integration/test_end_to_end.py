@@ -34,7 +34,7 @@ def test_training_classification(spark_context, mode, parameter_server_mode, mni
 
     # Initialize SparkModel from keras model and Spark context
     spark_model = SparkModel(classification_model, frequency='epoch',
-                             mode=mode, parameter_server_mode=parameter_server_mode, port=4000 + random.randint(0, 500))
+                             mode=mode, parameter_server_mode=parameter_server_mode, port=4000 + random.randint(0, 800))
 
     # Train Spark model
     spark_model.fit(rdd, epochs=epochs, batch_size=batch_size,
@@ -73,7 +73,7 @@ def test_training_regression(spark_context, mode, parameter_server_mode, boston_
     sgd = SGD(lr=0.0000001)
     regression_model.compile(sgd, 'mse', ['mae'])
     spark_model = SparkModel(regression_model, frequency='epoch', mode=mode,
-                             parameter_server_mode=parameter_server_mode, port=4000 + random.randint(0, 500))
+                             parameter_server_mode=parameter_server_mode, port=4000 + random.randint(0, 800))
 
     # Train Spark model
     spark_model.fit(rdd, epochs=epochs, batch_size=batch_size,
