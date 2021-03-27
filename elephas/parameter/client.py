@@ -2,7 +2,7 @@ import abc
 
 import numpy as np
 import socket
-import six.moves.cPickle as pickle
+import pickle
 
 
 try:
