@@ -1,9 +1,9 @@
 import json
 from enum import Enum
+from typing import Union
 
-import tensorflow
-import numpy as np
-from pyspark import RDD
+from pyspark.sql import Column
+import pyspark.sql.functions as F
 
 
 class ModelType(Enum):
@@ -55,21 +55,6 @@ class LossModelTypeMapper(Singleton):
         self.__mapping.update({loss: model_type})
 
 
-def determine_predict_function(model: tensorflow.keras.models.Model,
-                               model_type: ModelType,
-                               predict_classes: bool = True):
-    if model_type == ModelType.CLASSIFICATION and predict_classes:
-        if isinstance(model, tensorflow.keras.models.Sequential):
-            predict_function = model.predict_classes
-        else:
-            # support for functional API
-            predict_function = lambda x: model.predict(x).argmax(axis=-1)
-    else:
-        predict_function = model.predict
-
-    return predict_function
-
-
 class ModelTypeEncoder(json.JSONEncoder):
     def default(self, obj):
         if obj in [e for e in ModelType]:
@@ -83,3 +68,12 @@ def as_enum(d):
         return getattr(ModelType, member)
     else:
         return d
+
+
+def argmax(col: Union[str, Column]) -> Column:
+    """
+    returns expression for finding the argmax in an array column
+    :param col: array column to find argmax of
+    :return: expression which can be used in `select` or `withColumn`
+    """
+    return F.expr(f'array_position({col}, array_max({col})) - 1')

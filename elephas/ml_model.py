@@ -17,16 +17,15 @@ from tensorflow.keras.optimizers import get as get_optimizer
 
 from .mllib import from_vector
 from .spark_model import SparkModel
-from .utils.model_utils import LossModelTypeMapper, ModelType, determine_predict_function, ModelTypeEncoder, as_enum
+from .utils.model_utils import LossModelTypeMapper, ModelType, ModelTypeEncoder, as_enum
 from .ml.adapter import df_to_simple_rdd
 from .ml.params import *
-from .utils.warnings import ElephasWarning
 
 
 class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasKerasModelConfig, HasFeaturesCol,
                        HasLabelCol, HasMode, HasEpochs, HasBatchSize, HasFrequency, HasVerbosity, HasNumberOfClasses,
                        HasNumberOfWorkers, HasOutputCol, HasLoss,
-                       HasMetrics, HasKerasOptimizerConfig, HasCustomObjects, HasPredictClasses):
+                       HasMetrics, HasKerasOptimizerConfig, HasCustomObjects):
     """
     SparkML Estimator implementation of an elephas model. This estimator takes all relevant arguments for model
     compilation and training.
@@ -108,7 +107,6 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
                                   keras_model_config=spark_model.master_network.to_yaml(),
                                   weights=model_weights,
                                   custom_objects=self.get_custom_objects(),
-                                  predict_classes=self.get_predict_classes(),
                                   model_type=LossModelTypeMapper().get_model_type(loss))
 
     def setFeaturesCol(self, value):
@@ -126,13 +124,6 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
                       " ElephasEstimator(outputCol='foo')", DeprecationWarning)
         return self._set(outputCol=value)
 
-    def set_predict_classes(self, predict_classes):
-        if LossModelTypeMapper().get_model_type(self.get_loss()) == ModelType.REGRESSION:
-            warnings.warn("Setting `predict_classes` doesn't have any effect when training a regression problem.",
-                          ElephasWarning)
-        super().set_predict_classes(predict_classes)
-
-
 def load_ml_estimator(file_name: str) -> ElephasEstimator:
     f = h5py.File(file_name, mode='r')
     elephas_conf = json.loads(f.attrs.get('distributed_config'))
@@ -140,8 +131,7 @@ def load_ml_estimator(file_name: str) -> ElephasEstimator:
     return ElephasEstimator(**config)
 
 
-class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, HasFeaturesCol, HasCustomObjects,
-                         HasPredictClasses):
+class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, HasFeaturesCol, HasCustomObjects):
     """SparkML Transformer implementation. Contains a trained model,
     with which new feature data can be transformed into labels.
     """
@@ -196,23 +186,17 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
         def extract_features_and_predict(model_yaml: str,
                                          custom_objects: dict,
                                          features_col: str,
-                                         model_type: ModelType,
-                                         predict_classes: bool,
                                          data):
             model = model_from_yaml(model_yaml, custom_objects)
             model.set_weights(weights.value)
-            predict_function = determine_predict_function(model, model_type, predict_classes)
-            return predict_function(np.stack([from_vector(x[features_col]) for x in data]))
+            return model.predict(np.stack([from_vector(x[features_col]) for x in data]))
 
         predictions = rdd.mapPartitions(
             partial(extract_features_and_predict,
                     self.get_keras_model_config(),
                     self.get_custom_objects(),
-                    self.getFeaturesCol(),
-                    self.model_type,
-                    self.get_predict_classes()))
-        if (self.model_type == ModelType.CLASSIFICATION and self.get_predict_classes()) \
-                or self.model_type == ModelType.REGRESSION:
+                    self.getFeaturesCol()))
+        if self.model_type == ModelType.REGRESSION:
             predictions = predictions.map(lambda x: tuple([float(x)]))
             output_col_field = StructField(output_col, DoubleType(), True)
         else:
