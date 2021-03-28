@@ -1,7 +1,6 @@
 from hyperopt import STATUS_OK
 from hyperas.distributions import choice, uniform
-import six.moves.cPickle as pickle
-
+import pickle
 from elephas.hyperparam import HyperParamModel
 
 
