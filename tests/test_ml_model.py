@@ -1,4 +1,5 @@
 import pytest
+from pyspark.sql.types import DoubleType
 from tensorflow.keras import optimizers
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.models import Sequential
@@ -10,8 +11,7 @@ from elephas.ml.adapter import to_data_frame
 from pyspark.mllib.evaluation import MulticlassMetrics, RegressionMetrics
 from pyspark.ml import Pipeline
 
-from elephas.utils.model_utils import ModelType
-from elephas.utils.warnings import ElephasWarning
+from elephas.utils.model_utils import ModelType, argmax
 
 
 def test_serialization_transformer(classification_model):
@@ -78,6 +78,9 @@ def test_spark_ml_model_classification(spark_context, classification_model, mnis
     pnl = prediction.select("label", "prediction")
     pnl.show(100)
 
+    # since prediction in a multiclass classification problem is a vector, we need to compute argmax
+    # the casting to a double is just necessary for using MulticlassMetrics
+    pnl = pnl.select('label', argmax('prediction').astype(DoubleType()).alias('prediction'))
     prediction_and_label = pnl.rdd.map(lambda row: (row.label, row.prediction))
     metrics = MulticlassMetrics(prediction_and_label)
     print(metrics.accuracy)
@@ -110,6 +113,7 @@ def test_functional_model(spark_context, classification_model_functional, mnist_
     fitted_pipeline = pipeline.fit(df)
     prediction = fitted_pipeline.transform(test_df)
     pnl = prediction.select("label", "prediction")
+    pnl = pnl.select('label', argmax('prediction').astype(DoubleType()).alias('prediction'))
     pnl.show(100)
 
     prediction_and_label = pnl.rdd.map(lambda row: (row.label, row.prediction))
@@ -276,7 +280,6 @@ def test_predict_classes_probability(spark_context, classification_model, mnist_
     estimator.set_mode("synchronous")
     estimator.set_loss("categorical_crossentropy")
     estimator.set_metrics(['acc'])
-    estimator.set_predict_classes(False)
     estimator.set_epochs(epochs)
     estimator.set_batch_size(batch_size)
     estimator.set_validation_split(0.1)
@@ -292,11 +295,3 @@ def test_predict_classes_probability(spark_context, classification_model, mnist_
     # and therefore 10 probabilities
     assert len(results.take(1)[0].prediction) == 10
 
-
-def test_set_predict_classes_regression_warning(spark_context, regression_model):
-    with pytest.warns(ElephasWarning):
-        estimator = ElephasEstimator()
-        estimator.set_loss("mae")
-        estimator.set_metrics(['mae'])
-        estimator.set_categorical_labels(False)
-        estimator.set_predict_classes(True)
