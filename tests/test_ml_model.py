@@ -317,7 +317,6 @@ def test_batch_predict_classes_probability(spark_context, classification_model, 
     estimator.set_mode("synchronous")
     estimator.set_loss("categorical_crossentropy")
     estimator.set_metrics(['acc'])
-    estimator.set_predict_classes(False)
     estimator.set_epochs(epochs)
     estimator.set_batch_size(batch_size)
     estimator.set_validation_split(0.1)
