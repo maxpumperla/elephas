@@ -2,13 +2,10 @@ import abc
 
 import numpy as np
 import socket
-import six.moves.cPickle as pickle
+import pickle
 
 
-try:
-    import urllib.request as urllib2
-except ImportError:
-    import urllib2
+import urllib.request as urllib2
 
 from ..utils.sockets import determine_master, send, receive
 
