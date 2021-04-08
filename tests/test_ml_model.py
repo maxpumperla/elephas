@@ -334,10 +334,10 @@ def test_batch_predict_classes_probability(spark_context, classification_model, 
     inference_batch_size = int(len(y_test) / 10)
     fitted_pipeline.set_params(inference_batch_size=inference_batch_size)
     fitted_pipeline.set_params(outputCol="prediciton_via_batch_inference")
-    results_with_batch_prediction = fitted_pipeline.transform(test_df)
+    results_with_batch_prediction = fitted_pipeline.transform(results)
     # we should have an array of 10 elements in the prediction column, since we have 10 classes
     # and therefore 10 probabilities
-    results_np = results.take(1)[0]
+    results_np = results_with_batch_prediction.take(1)[0]
     assert len(results_np.prediction) == 10
     assert len(results_np.prediction_via_batch_inference) == 10
     assert np.array_equal(results_np.prediction, results_np.prediction_via_batch_inference)
