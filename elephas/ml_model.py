@@ -207,8 +207,11 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
                 pred = predict_function(batch_np)
                 preds.append(pred)
 
-            res = np.vstack(preds)
-            return res
+            if preds:
+                res = np.vstack(preds)
+                return res
+            else:
+                return np.array([])
 
         def extract_features_and_predict(model_yaml: str,
                                          custom_objects: dict,
@@ -220,7 +223,7 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
             if inference_batch_size is not None and inference_batch_size > 0:
                 return batched_prediction(data, inference_batch_size, features_col, model.predict)
             else:
-                return model.predict(np.stack([from_vector(x[features_col]) for x in data]))
+                return model.predict(np.array([from_vector(x[features_col]) for x in data]))
 
         predictions = rdd.mapPartitions(
             partial(extract_features_and_predict,
