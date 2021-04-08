@@ -13,8 +13,6 @@ from pyspark.sql.types import DoubleType, StructField, ArrayType
 from tensorflow.keras.models import model_from_yaml
 from tensorflow.keras.optimizers import get as get_optimizer
 
-from .ml.adapter import df_to_simple_rdd
-from .ml.params import *
 from .mllib import from_vector
 from .spark_model import SparkModel
 from .utils.model_utils import LossModelTypeMapper, ModelType, ModelTypeEncoder, as_enum
