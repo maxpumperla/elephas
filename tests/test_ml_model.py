@@ -1,16 +1,14 @@
-import pytest
 import numpy as np
+import pytest
+from pyspark.ml import Pipeline
+from pyspark.mllib.evaluation import MulticlassMetrics, RegressionMetrics
 from tensorflow.keras import optimizers
+from tensorflow.keras.activations import relu
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.activations import relu
 
-from elephas.ml_model import ElephasEstimator, load_ml_estimator, ElephasTransformer, load_ml_transformer
 from elephas.ml.adapter import to_data_frame
-
-from pyspark.mllib.evaluation import MulticlassMetrics, RegressionMetrics
-from pyspark.ml import Pipeline
-
+from elephas.ml_model import ElephasEstimator, load_ml_estimator, ElephasTransformer, load_ml_transformer
 from elephas.utils.model_utils import ModelType
 from elephas.utils.warnings import ElephasWarning
 
@@ -229,6 +227,7 @@ def test_set_cols(spark_context, regression_model, boston_housing_dataset):
 def test_custom_objects(spark_context, boston_housing_dataset):
     def custom_activation(x):
         return 2 * relu(x)
+
     model = Sequential()
     model.add(Dense(64, input_shape=(13,)))
     model.add(Dense(64, activation=custom_activation))
@@ -302,6 +301,7 @@ def test_set_predict_classes_regression_warning(spark_context, regression_model)
         estimator.set_categorical_labels(False)
         estimator.set_predict_classes(True)
 
+
 def test_batch_predict_classes_probability(spark_context, classification_model, mnist_data):
     batch_size = 64
     nb_classes = 10
@@ -337,7 +337,7 @@ def test_batch_predict_classes_probability(spark_context, classification_model, 
     results = fitted_pipeline.transform(test_df)
 
     # Set inference batch size and do transform again on the same test_df
-    inference_batch_size = int(len(y_test)/10)
+    inference_batch_size = int(len(y_test) / 10)
     fitted_pipeline.set_params(inference_batch_size=inference_batch_size)
     fitted_pipeline.set_params(outputCol="prediciton_via_batch_inference")
     results_with_batch_prediction = fitted_pipeline.transform(test_df)
