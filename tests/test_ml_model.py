@@ -324,8 +324,7 @@ def test_batch_predict_classes_probability(spark_context, classification_model, 
     estimator.set_nb_classes(nb_classes)
 
     # Fitting a model returns a Transformer
-    pipeline = Pipeline(stages=[estimator])
-    fitted_pipeline = pipeline.fit(df)
+    fitted_pipeline = estimator.fit(df)
 
     results = fitted_pipeline.transform(test_df)
 
