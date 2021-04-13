@@ -1,16 +1,15 @@
+import numpy as np
 import pytest
+from pyspark.ml import Pipeline
+from pyspark.mllib.evaluation import MulticlassMetrics, RegressionMetrics
 from pyspark.sql.types import DoubleType
 from tensorflow.keras import optimizers
+from tensorflow.keras.activations import relu
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.activations import relu
 
-from elephas.ml_model import ElephasEstimator, load_ml_estimator, ElephasTransformer, load_ml_transformer
 from elephas.ml.adapter import to_data_frame
-
-from pyspark.mllib.evaluation import MulticlassMetrics, RegressionMetrics
-from pyspark.ml import Pipeline
-
+from elephas.ml_model import ElephasEstimator, load_ml_estimator, ElephasTransformer, load_ml_transformer
 from elephas.utils.model_utils import ModelType, argmax
 
 
@@ -232,6 +231,7 @@ def test_set_cols(spark_context, regression_model, boston_housing_dataset):
 def test_custom_objects(spark_context, boston_housing_dataset):
     def custom_activation(x):
         return 2 * relu(x)
+
     model = Sequential()
     model.add(Dense(64, input_shape=(13,)))
     model.add(Dense(64, activation=custom_activation))
@@ -295,3 +295,47 @@ def test_predict_classes_probability(spark_context, classification_model, mnist_
     # and therefore 10 probabilities
     assert len(results.take(1)[0].prediction) == 10
 
+
+def test_batch_predict_classes_probability(spark_context, classification_model, mnist_data):
+    batch_size = 64
+    nb_classes = 10
+    epochs = 1
+
+    x_train, y_train, x_test, y_test = mnist_data
+    x_train = x_train[:1000]
+    y_train = y_train[:1000]
+    df = to_data_frame(spark_context, x_train, y_train, categorical=True)
+    test_df = to_data_frame(spark_context, x_test, y_test, categorical=True)
+
+    sgd = optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
+    sgd_conf = optimizers.serialize(sgd)
+
+    # Initialize Spark ML Estimator
+    estimator = ElephasEstimator()
+    estimator.set_keras_model_config(classification_model.to_yaml())
+    estimator.set_optimizer_config(sgd_conf)
+    estimator.set_mode("synchronous")
+    estimator.set_loss("categorical_crossentropy")
+    estimator.set_metrics(['acc'])
+    estimator.set_epochs(epochs)
+    estimator.set_batch_size(batch_size)
+    estimator.set_validation_split(0.1)
+    estimator.set_categorical_labels(True)
+    estimator.set_nb_classes(nb_classes)
+
+    # Fitting a model returns a Transformer
+    fitted_pipeline = estimator.fit(df)
+
+    results = fitted_pipeline.transform(test_df)
+
+    # Set inference batch size and do transform again on the same test_df
+    inference_batch_size = int(len(y_test) / 10)
+    fitted_pipeline.set_params(inference_batch_size=inference_batch_size)
+    fitted_pipeline.set_params(outputCol="prediction_via_batch_inference")
+    results_with_batch_prediction = fitted_pipeline.transform(results)
+    # we should have an array of 10 elements in the prediction column, since we have 10 classes
+    # and therefore 10 probabilities
+    results_np = results_with_batch_prediction.take(1)[0]
+    assert len(results_np.prediction) == 10
+    assert len(results_np.prediction_via_batch_inference) == 10
+    assert np.array_equal(results_np.prediction, results_np.prediction_via_batch_inference)

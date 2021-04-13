@@ -1,17 +1,15 @@
+import copy
+import json
 import warnings
 from functools import partial
 
-import numpy as np
-import copy
 import h5py
-import json
-
-from pyspark.ml.param.shared import HasOutputCol, HasFeaturesCol, HasLabelCol
+import numpy as np
 from pyspark import keyword_only
 from pyspark.ml import Estimator, Model
+from pyspark.ml.param.shared import HasOutputCol, HasFeaturesCol, HasLabelCol
 from pyspark.sql import DataFrame
 from pyspark.sql.types import DoubleType, StructField, ArrayType
-
 from tensorflow.keras.models import model_from_yaml
 from tensorflow.keras.optimizers import get as get_optimizer
 
@@ -107,7 +105,8 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
                                   keras_model_config=spark_model.master_network.to_yaml(),
                                   weights=model_weights,
                                   custom_objects=self.get_custom_objects(),
-                                  model_type=LossModelTypeMapper().get_model_type(loss))
+                                  model_type=LossModelTypeMapper().get_model_type(loss),
+                                  history=spark_model.training_histories)
 
     def setFeaturesCol(self, value):
         warnings.warn("setFeaturesCol is deprecated in Spark 3.0.x+ - please supply featuresCol in the constructor i.e;"
@@ -131,7 +130,8 @@ def load_ml_estimator(file_name: str) -> ElephasEstimator:
     return ElephasEstimator(**config)
 
 
-class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, HasFeaturesCol, HasCustomObjects):
+class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, HasFeaturesCol, HasCustomObjects,
+                         HasInferenceBatchSize):
     """SparkML Transformer implementation. Contains a trained model,
     with which new feature data can be transformed into labels.
     """
@@ -145,7 +145,12 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
         if "model_type" in kwargs.keys():
             # Extract loss from parameters
             self.model_type = kwargs.pop('model_type')
+        self._history = kwargs.pop("history", [])
         self.set_params(**kwargs)
+
+    @property
+    def history(self):
+        return self._history
 
     @keyword_only
     def set_params(self, **kwargs):
@@ -183,19 +188,49 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
         rdd = df.rdd
         weights = rdd.ctx.broadcast(self.weights)
 
+        def batched_prediction(data, inference_batch_size, features_col, predict_function) -> np.ndarray:
+            # Do prediction in batches instead of materializing the whole partition at once
+            batch = []
+            preds = []
+            for row in data:
+                if len(batch) < inference_batch_size:
+                    batch.append(from_vector(row[features_col]))
+                else:
+                    batch_np = np.array(batch)
+                    pred = predict_function(batch_np)
+                    preds.append(pred)
+                    batch = [from_vector(row[features_col])]
+            if len(batch) > 0:
+                batch_np = np.array(batch)
+                pred = predict_function(batch_np)
+                preds.append(pred)
+
+            if preds:
+                res = np.vstack(preds)
+                return res
+            else:
+                return np.array([])
+
         def extract_features_and_predict(model_yaml: str,
                                          custom_objects: dict,
                                          features_col: str,
-                                         data):
+                                         data,
+                                         inference_batch_size: int = None):
             model = model_from_yaml(model_yaml, custom_objects)
             model.set_weights(weights.value)
-            return model.predict(np.stack([from_vector(x[features_col]) for x in data]))
+            if inference_batch_size is not None and inference_batch_size > 0:
+                return batched_prediction(data, inference_batch_size, features_col, model.predict)
+            else:
+                return model.predict(np.array([from_vector(x[features_col]) for x in data]))
 
         predictions = rdd.mapPartitions(
             partial(extract_features_and_predict,
                     self.get_keras_model_config(),
                     self.get_custom_objects(),
-                    self.getFeaturesCol()))
+                    self.getFeaturesCol(),
+                    inference_batch_size=self.get_inference_batch_size()
+                    )
+        )
         if self.model_type == ModelType.REGRESSION:
             predictions = predictions.map(lambda x: tuple([float(x)]))
             output_col_field = StructField(output_col, DoubleType(), True)
