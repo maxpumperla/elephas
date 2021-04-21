@@ -8,6 +8,7 @@ import numpy as np
 from pyspark import keyword_only
 from pyspark.ml import Estimator, Model
 from pyspark.ml.param.shared import HasOutputCol, HasFeaturesCol, HasLabelCol
+from pyspark.ml.util import DefaultParamsReadable, DefaultParamsWritable
 from pyspark.sql import DataFrame
 from pyspark.sql.types import DoubleType, StructField, ArrayType
 from tensorflow.keras.models import model_from_yaml
@@ -23,7 +24,8 @@ from .ml.params import *
 class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasKerasModelConfig, HasFeaturesCol,
                        HasLabelCol, HasMode, HasEpochs, HasBatchSize, HasFrequency, HasVerbosity, HasNumberOfClasses,
                        HasNumberOfWorkers, HasOutputCol, HasLoss,
-                       HasMetrics, HasKerasOptimizerConfig, HasCustomObjects):
+                       HasMetrics, HasKerasOptimizerConfig, HasCustomObjects, DefaultParamsReadable,
+                       DefaultParamsWritable):
     """
     SparkML Estimator implementation of an elephas model. This estimator takes all relevant arguments for model
     compilation and training.

@@ -339,3 +339,25 @@ def test_batch_predict_classes_probability(spark_context, classification_model, 
     assert len(results_np.prediction) == 10
     assert len(results_np.prediction_via_batch_inference) == 10
     assert np.array_equal(results_np.prediction, results_np.prediction_via_batch_inference)
+
+
+def test_save_pipeline(spark_context, classification_model):
+    sgd = optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
+    sgd_conf = optimizers.serialize(sgd)
+
+    # Initialize Spark ML Estimator
+    estimator = ElephasEstimator()
+    estimator.set_keras_model_config(classification_model.to_yaml())
+    estimator.set_optimizer_config(sgd_conf)
+    estimator.set_mode("synchronous")
+    estimator.set_loss("categorical_crossentropy")
+    estimator.set_metrics(['acc'])
+    estimator.set_epochs(10)
+    estimator.set_batch_size(10)
+    estimator.set_validation_split(0.1)
+    estimator.set_categorical_labels(True)
+    estimator.set_nb_classes(10)
+
+    # Fitting a model returns a Transformer
+    pipeline = Pipeline(stages=[estimator])
+    pipeline.save('tmp')
