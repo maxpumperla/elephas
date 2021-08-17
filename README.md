@@ -4,7 +4,7 @@
 
 ## 
 
-[![Build Status](https://travis-ci.org/maxpumperla/elephas.svg?branch=master)](https://travis-ci.org/maxpumperla/elephas)
+[![Build Status](https://travis-ci.com/maxpumperla/elephas.svg?branch=master)](https://travis-ci.org/maxpumperla/elephas)
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/maxpumperla/elephas/blob/master/LICENSE)
 
 Elephas is an extension of [Keras](http://keras.io), which allows you to run distributed deep learning models at 
