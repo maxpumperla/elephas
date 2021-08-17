@@ -11,7 +11,7 @@ from pyspark.ml.param.shared import HasOutputCol, HasFeaturesCol, HasLabelCol
 from pyspark.ml.util import DefaultParamsReadable, DefaultParamsWritable
 from pyspark.sql import DataFrame
 from pyspark.sql.types import DoubleType, StructField, ArrayType
-from tensorflow.keras.models import model_from_yaml
+from tensorflow.keras.models import model_from_json
 from tensorflow.keras.optimizers import get as get_optimizer
 
 from .mllib import from_vector
@@ -75,7 +75,7 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
         return self._set(**kwargs)
 
     def get_model(self):
-        return model_from_yaml(self.get_keras_model_config(), self.get_custom_objects())
+        return model_from_json(self.get_keras_model_config(), self.get_custom_objects())
 
     def _fit(self, df: DataFrame):
         """Private fit method of the Estimator, which trains the model.
@@ -83,7 +83,7 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
         simple_rdd = df_to_simple_rdd(df, categorical=self.get_categorical_labels(), nb_classes=self.get_nb_classes(),
                                       features_col=self.getFeaturesCol(), label_col=self.getLabelCol())
         simple_rdd = simple_rdd.repartition(self.get_num_workers())
-        keras_model = model_from_yaml(self.get_keras_model_config(), self.get_custom_objects())
+        keras_model = model_from_json(self.get_keras_model_config(), self.get_custom_objects())
         metrics = self.get_metrics()
         loss = self.get_loss()
         optimizer = get_optimizer(self.get_optimizer_config())
@@ -104,7 +104,7 @@ class ElephasEstimator(Estimator, HasCategoricalLabels, HasValidationSplit, HasK
         return ElephasTransformer(labelCol=self.getLabelCol(),
                                   outputCol=self.getOutputCol(),
                                   featuresCol=self.getFeaturesCol(),
-                                  keras_model_config=spark_model.master_network.to_yaml(),
+                                  keras_model_config=spark_model.master_network.to_json(),
                                   weights=model_weights,
                                   custom_objects=self.get_custom_objects(),
                                   model_type=LossModelTypeMapper().get_model_type(loss),
@@ -180,7 +180,7 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
         f.close()
 
     def get_model(self):
-        return model_from_yaml(self.get_keras_model_config(), self.get_custom_objects())
+        return model_from_json(self.get_keras_model_config(), self.get_custom_objects())
 
     def _transform(self, df):
         """Private transform method of a Transformer. This serves as batch-prediction method for our purposes.
@@ -218,7 +218,7 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
                                          features_col: str,
                                          data,
                                          inference_batch_size: int = None):
-            model = model_from_yaml(model_yaml, custom_objects)
+            model = model_from_json(model_yaml, custom_objects)
             model.set_weights(weights.value)
             if inference_batch_size is not None and inference_batch_size > 0:
                 return batched_prediction(data, inference_batch_size, features_col, model.predict)

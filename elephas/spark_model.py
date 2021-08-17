@@ -8,7 +8,7 @@ import numpy as np
 import pyspark
 from pyspark import RDD
 from tensorflow.keras.models import load_model
-from tensorflow.keras.models import model_from_yaml
+from tensorflow.keras.models import model_from_json
 from tensorflow.keras.optimizers import get as get_optimizer
 from tensorflow.keras.optimizers import serialize as serialize_optimizer, deserialize as deserialize_optimizer
 
@@ -167,7 +167,7 @@ class SparkModel(object):
         metrics = self.master_metrics
         custom = self.custom_objects
 
-        yaml = self._master_network.to_yaml()
+        yaml = self._master_network.to_json()
         init = self._master_network.get_weights()
         parameters = rdd.context.broadcast(init)
 
@@ -200,13 +200,13 @@ class SparkModel(object):
     def _predict(self, rdd: RDD):
         if self.num_workers:
             rdd = rdd.repartition(self.num_workers)
-        yaml_model = self.master_network.to_yaml()
+        yaml_model = self.master_network.to_json()
         weights = self.master_network.get_weights()
         weights = rdd.context.broadcast(weights)
         custom_objects = self.custom_objects
 
         def _predict(model, custom_objects, data):
-            model = model_from_yaml(model, custom_objects)
+            model = model_from_json(model, custom_objects)
             model.set_weights(weights.value)
             data = np.array([x for x in data])
             return model.predict(data)
@@ -215,7 +215,7 @@ class SparkModel(object):
         return predictions
 
     def _evaluate(self, rdd: RDD, **kwargs):
-        yaml_model = self.master_network.to_yaml()
+        yaml_model = self.master_network.to_json()
         optimizer = deserialize_optimizer(self.master_optimizer)
         loss = self.master_loss
         weights = self.master_network.get_weights()
@@ -224,7 +224,7 @@ class SparkModel(object):
         metrics = self.master_metrics
 
         def _evaluate(model, optimizer, loss, custom_objects, metrics, kwargs, data_iterator):
-            model = model_from_yaml(model, custom_objects)
+            model = model_from_json(model, custom_objects)
             model.compile(optimizer, loss, metrics)
             model.set_weights(weights.value)
             feature_iterator, label_iterator = tee(data_iterator, 2)

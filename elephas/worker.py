@@ -1,6 +1,6 @@
 import numpy as np
 from itertools import tee
-from tensorflow.keras.models import model_from_yaml
+from tensorflow.keras.models import model_from_json
 from tensorflow.keras.optimizers import get as get_optimizer
 from tensorflow.python.keras.utils.generic_utils import slice_arrays
 
@@ -28,7 +28,7 @@ class SparkWorker(object):
         """
         history = None
         optimizer = get_optimizer(self.master_optimizer)
-        self.model = model_from_yaml(self.yaml, self.custom_objects)
+        self.model = model_from_json(self.yaml, self.custom_objects)
         self.model.compile(optimizer=optimizer,
                            loss=self.master_loss, metrics=self.master_metrics)
         self.model.set_weights(self.parameters.value)
@@ -84,7 +84,7 @@ class AsynchronousSparkWorker(object):
         if x_train.size == 0:
             return
 
-        self.model = model_from_yaml(self.yaml, self.custom_objects)
+        self.model = model_from_json(self.yaml, self.custom_objects)
         self.model.compile(optimizer=get_optimizer(self.master_optimizer),
                            loss=self.master_loss, metrics=self.master_metrics)
         self.model.set_weights(self.parameters.value)

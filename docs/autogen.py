@@ -5,7 +5,7 @@ import inspect
 import os
 import shutil
 
-from elephas import spark_model, ml_model, hyperparam
+from elephas import spark_model, ml_model
 from elephas.parameter import client, server
 from elephas.utils import functional_utils, rdd_utils, serialization
 from elephas.ml import adapter as ml_adapter

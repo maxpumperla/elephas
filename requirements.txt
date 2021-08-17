@@ -1,6 +1,4 @@
 Flask==1.0.2
-hyperas==0.4
-Keras==2.2.5
 pyspark
-tensorflow>=2.0,!=2.2.*
-h5py==2.10.0
+tensorflow-cpu>=2.0,!=2.2.*
+h5py==3.3.0

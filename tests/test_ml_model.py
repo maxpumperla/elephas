@@ -15,27 +15,27 @@ from elephas.utils.model_utils import ModelType, argmax
 
 def test_serialization_transformer(classification_model):
     transformer = ElephasTransformer()
-    transformer.set_keras_model_config(classification_model.to_yaml())
+    transformer.set_keras_model_config(classification_model.to_json())
     transformer.save("test.h5")
     loaded_model = load_ml_transformer("test.h5")
-    assert loaded_model.get_model().to_yaml() == classification_model.to_yaml()
+    assert loaded_model.get_model().to_json() == classification_model.to_json()
 
 
 def test_serialization_estimator(classification_model):
     estimator = ElephasEstimator()
-    estimator.set_keras_model_config(classification_model.to_yaml())
+    estimator.set_keras_model_config(classification_model.to_json())
     estimator.set_loss("categorical_crossentropy")
 
     estimator.save("test.h5")
     loaded_model = load_ml_estimator("test.h5")
-    assert loaded_model.get_model().to_yaml() == classification_model.to_yaml()
+    assert loaded_model.get_model().to_json() == classification_model.to_json()
 
 
 def test_serialization_transformer_and_predict(spark_context, classification_model, mnist_data):
     _, _, x_test, y_test = mnist_data
     df = to_data_frame(spark_context, x_test, y_test, categorical=True)
     transformer = ElephasTransformer(weights=classification_model.get_weights(), model_type=ModelType.CLASSIFICATION)
-    transformer.set_keras_model_config(classification_model.to_yaml())
+    transformer.set_keras_model_config(classification_model.to_json())
     transformer.save("test.h5")
     loaded_transformer = load_ml_transformer("test.h5")
     loaded_transformer.transform(df)
@@ -57,7 +57,7 @@ def test_spark_ml_model_classification(spark_context, classification_model, mnis
 
     # Initialize Spark ML Estimator
     estimator = ElephasEstimator()
-    estimator.set_keras_model_config(classification_model.to_yaml())
+    estimator.set_keras_model_config(classification_model.to_json())
     estimator.set_optimizer_config(sgd_conf)
     estimator.set_mode("synchronous")
     estimator.set_loss("categorical_crossentropy")
@@ -98,7 +98,7 @@ def test_functional_model(spark_context, classification_model_functional, mnist_
     sgd = optimizers.SGD()
     sgd_conf = optimizers.serialize(sgd)
     estimator = ElephasEstimator()
-    estimator.set_keras_model_config(classification_model_functional.to_yaml())
+    estimator.set_keras_model_config(classification_model_functional.to_json())
     estimator.set_optimizer_config(sgd_conf)
     estimator.set_mode("synchronous")
     estimator.set_loss("categorical_crossentropy")
@@ -131,7 +131,7 @@ def test_regression_model(spark_context, regression_model, boston_housing_datase
     sgd = optimizers.SGD(lr=0.00001)
     sgd_conf = optimizers.serialize(sgd)
     estimator = ElephasEstimator()
-    estimator.set_keras_model_config(regression_model.to_yaml())
+    estimator.set_keras_model_config(regression_model.to_json())
     estimator.set_optimizer_config(sgd_conf)
     estimator.set_mode("synchronous")
     estimator.set_loss("mae")
@@ -168,7 +168,7 @@ def test_set_cols_deprecated(spark_context, regression_model, boston_housing_dat
         sgd = optimizers.SGD(lr=0.00001)
         sgd_conf = optimizers.serialize(sgd)
         estimator = ElephasEstimator()
-        estimator.set_keras_model_config(regression_model.to_yaml())
+        estimator.set_keras_model_config(regression_model.to_json())
         estimator.set_optimizer_config(sgd_conf)
         estimator.setFeaturesCol('scaled_features')
         estimator.setOutputCol('output')
@@ -207,7 +207,7 @@ def test_set_cols(spark_context, regression_model, boston_housing_dataset):
     sgd = optimizers.SGD(lr=0.00001)
     sgd_conf = optimizers.serialize(sgd)
     estimator = ElephasEstimator(labelCol='ground_truth', outputCol='output', featuresCol='scaled_features')
-    estimator.set_keras_model_config(regression_model.to_yaml())
+    estimator.set_keras_model_config(regression_model.to_json())
     estimator.set_optimizer_config(sgd_conf)
     estimator.set_mode("synchronous")
     estimator.set_loss("mae")
@@ -243,7 +243,7 @@ def test_custom_objects(spark_context, boston_housing_dataset):
     sgd = optimizers.SGD(lr=0.00001)
     sgd_conf = optimizers.serialize(sgd)
     estimator = ElephasEstimator()
-    estimator.set_keras_model_config(model.to_yaml())
+    estimator.set_keras_model_config(model.to_json())
     estimator.set_optimizer_config(sgd_conf)
     estimator.set_mode("synchronous")
     estimator.set_loss("mae")
@@ -275,7 +275,7 @@ def test_predict_classes_probability(spark_context, classification_model, mnist_
 
     # Initialize Spark ML Estimator
     estimator = ElephasEstimator()
-    estimator.set_keras_model_config(classification_model.to_yaml())
+    estimator.set_keras_model_config(classification_model.to_json())
     estimator.set_optimizer_config(sgd_conf)
     estimator.set_mode("synchronous")
     estimator.set_loss("categorical_crossentropy")
@@ -312,7 +312,7 @@ def test_batch_predict_classes_probability(spark_context, classification_model, 
 
     # Initialize Spark ML Estimator
     estimator = ElephasEstimator()
-    estimator.set_keras_model_config(classification_model.to_yaml())
+    estimator.set_keras_model_config(classification_model.to_json())
     estimator.set_optimizer_config(sgd_conf)
     estimator.set_mode("synchronous")
     estimator.set_loss("categorical_crossentropy")
@@ -347,7 +347,7 @@ def test_save_pipeline(spark_context, classification_model):
 
     # Initialize Spark ML Estimator
     estimator = ElephasEstimator()
-    estimator.set_keras_model_config(classification_model.to_yaml())
+    estimator.set_keras_model_config(classification_model.to_json())
     estimator.set_optimizer_config(sgd_conf)
     estimator.set_mode("synchronous")
     estimator.set_loss("categorical_crossentropy")
