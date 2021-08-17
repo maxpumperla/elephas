@@ -12,8 +12,9 @@ scale with [Spark](http://spark.apache.org). Elephas currently supports a number
 applications, including:
 
 - [Data-parallel training of deep learning models](#basic-spark-integration)
-- [Distributed hyper-parameter optimization](#distributed-hyper-parameter-optimization)
 - [Distributed training of ensemble models](#distributed-training-of-ensemble-models)
+- [~~Distributed hyper-parameter optimization~~](#distributed-hyper-parameter-optimization)  (removed as of 3.0.0)
+
 
 
 Schematically, elephas works as follows.
@@ -193,6 +194,8 @@ estimator.set_custom_objects({'custom_activation': custom_activation, 'CustomLay
 ```
 
 ## Distributed hyper-parameter optimization
+
+<span style="color:red">**UPDATE**: As of 3.0.0, Hyper-parameter optimization features have been removed, since Hyperas is no longer active and was causing versioning compatibility issues. To use these features, install version 2.1 or below.</span>
 
 Hyper-parameter optimization with elephas is based on [hyperas](https://github.com/maxpumperla/hyperas), a convenience 
 wrapper for hyperopt and keras. Each Spark worker executes a number of trials, the results get collected and the best 
