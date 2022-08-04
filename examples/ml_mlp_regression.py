@@ -46,7 +46,7 @@ sgd_conf = optimizers.serialize(sgd)
 
 # Initialize Spark ML Estimator
 estimator = ElephasEstimator()
-estimator.set_keras_model_config(model.to_yaml())
+estimator.set_keras_model_config(model.to_json())
 estimator.set_optimizer_config(sgd_conf)
 estimator.set_mode("synchronous")
 estimator.set_loss("mae")

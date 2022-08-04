@@ -253,7 +253,7 @@ def model(x_train, y_train, x_test, y_test):
               validation_data=(x_test, y_test))
     score, acc = model.evaluate(x_test, y_test, show_accuracy=True, verbose=0)
     print('Test accuracy:', acc)
-    return {'loss': -acc, 'status': STATUS_OK, 'model': model.to_yaml()}
+    return {'loss': -acc, 'status': STATUS_OK, 'model': model.to_json()}
 ```
 
 Once the basic setup is defined, running the minimization is done in just a few lines of code:
