@@ -167,20 +167,20 @@ class SparkModel(object):
         metrics = self.master_metrics
         custom = self.custom_objects
 
-        yaml = self._master_network.to_json()
+        model_json = self._master_network.to_json()
         init = self._master_network.get_weights()
         parameters = rdd.context.broadcast(init)
 
         if self.mode in ['asynchronous', 'hogwild']:
             print('>>> Initialize workers')
             worker = AsynchronousSparkWorker(
-                yaml, parameters, self.client, train_config, freq, optimizer, loss, metrics, custom)
+                model_json, parameters, self.client, train_config, freq, optimizer, loss, metrics, custom)
             print('>>> Distribute load')
             rdd.mapPartitions(worker.train).collect()
             print('>>> Async training complete.')
             new_parameters = self.client.get_parameters()
         elif self.mode == 'synchronous':
-            worker = SparkWorker(yaml, parameters, train_config,
+            worker = SparkWorker(model_json, parameters, train_config,
                                  optimizer, loss, metrics, custom)
             training_outcomes = rdd.mapPartitions(worker.train).collect()
             new_parameters = self._master_network.get_weights()
@@ -200,7 +200,7 @@ class SparkModel(object):
     def _predict(self, rdd: RDD):
         if self.num_workers:
             rdd = rdd.repartition(self.num_workers)
-        yaml_model = self.master_network.to_json()
+        json_model = self.master_network.to_json()
         weights = self.master_network.get_weights()
         weights = rdd.context.broadcast(weights)
         custom_objects = self.custom_objects
@@ -211,11 +211,11 @@ class SparkModel(object):
             data = np.array([x for x in data])
             return model.predict(data)
 
-        predictions = rdd.mapPartitions(partial(_predict, yaml_model, custom_objects)).collect()
+        predictions = rdd.mapPartitions(partial(_predict, json_model, custom_objects)).collect()
         return predictions
 
     def _evaluate(self, rdd: RDD, **kwargs):
-        yaml_model = self.master_network.to_json()
+        json_model = self.master_network.to_json()
         optimizer = deserialize_optimizer(self.master_optimizer)
         loss = self.master_loss
         weights = self.master_network.get_weights()
@@ -234,7 +234,7 @@ class SparkModel(object):
 
         if self.num_workers:
             rdd = rdd.repartition(self.num_workers)
-        results = rdd.mapPartitions(partial(_evaluate, yaml_model, optimizer, loss, custom_objects, metrics, kwargs))
+        results = rdd.mapPartitions(partial(_evaluate, json_model, optimizer, loss, custom_objects, metrics, kwargs))
         if not metrics:
             # if no metrics, we can just return the scalar corresponding to the loss value
             return results.mean()

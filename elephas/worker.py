@@ -12,9 +12,9 @@ class SparkWorker(object):
     """Synchronous Spark worker. This code will be executed on workers.
     """
 
-    def __init__(self, yaml, parameters, train_config, master_optimizer,
+    def __init__(self, json, parameters, train_config, master_optimizer,
                  master_loss, master_metrics, custom_objects):
-        self.yaml = yaml
+        self.json = json
         self.parameters = parameters
         self.train_config = train_config
         self.master_optimizer = master_optimizer
@@ -28,7 +28,7 @@ class SparkWorker(object):
         """
         history = None
         optimizer = get_optimizer(self.master_optimizer)
-        self.model = model_from_json(self.yaml, self.custom_objects)
+        self.model = model_from_json(self.json, self.custom_objects)
         self.model.compile(optimizer=optimizer,
                            loss=self.master_loss, metrics=self.master_metrics)
         self.model.set_weights(self.parameters.value)
@@ -53,7 +53,7 @@ class AsynchronousSparkWorker(object):
     """Asynchronous Spark worker. This code will be executed on workers.
     """
 
-    def __init__(self, yaml, parameters, client, train_config, frequency,
+    def __init__(self, json, parameters, client, train_config, frequency,
                  master_optimizer, master_loss, master_metrics, custom_objects):
 
         if isinstance(client, BaseParameterClient):
@@ -68,7 +68,7 @@ class AsynchronousSparkWorker(object):
         self.master_optimizer = master_optimizer
         self.master_loss = master_loss
         self.master_metrics = master_metrics
-        self.yaml = yaml
+        self.json = json
         self.parameters = parameters
         self.custom_objects = custom_objects
         self.model = None
@@ -84,7 +84,7 @@ class AsynchronousSparkWorker(object):
         if x_train.size == 0:
             return
 
-        self.model = model_from_json(self.yaml, self.custom_objects)
+        self.model = model_from_json(self.json, self.custom_objects)
         self.model.compile(optimizer=get_optimizer(self.master_optimizer),
                            loss=self.master_loss, metrics=self.master_metrics)
         self.model.set_weights(self.parameters.value)

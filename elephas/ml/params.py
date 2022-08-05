@@ -10,7 +10,7 @@ class HasKerasModelConfig(Params):
     def __init__(self):
         super(HasKerasModelConfig, self).__init__()
         self.keras_model_config = Param(
-            self, "keras_model_config", "Serialized Keras model as yaml string")
+            self, "keras_model_config", "Serialized Keras model as json string")
 
     def set_keras_model_config(self, keras_model_config):
         self._paramMap[self.keras_model_config] = keras_model_config

@@ -213,12 +213,12 @@ class ElephasTransformer(Model, HasKerasModelConfig, HasLabelCol, HasOutputCol, 
             else:
                 return np.array([])
 
-        def extract_features_and_predict(model_yaml: str,
+        def extract_features_and_predict(model_json: str,
                                          custom_objects: dict,
                                          features_col: str,
                                          data,
                                          inference_batch_size: int = None):
-            model = model_from_json(model_yaml, custom_objects)
+            model = model_from_json(model_json, custom_objects)
             model.set_weights(weights.value)
             if inference_batch_size is not None and inference_batch_size > 0:
                 return batched_prediction(data, inference_batch_size, features_col, model.predict)
