@@ -12,7 +12,7 @@ setup(name='elephas',
                         'tensorflow>=2,!=2.2.*',
                         'flask',
                         'h5py==3.3.0',
-                        'pyspark==3.2'],
+                        'pyspark==3.2.2'],
       extras_require={
         'tests': ['pytest', 'pytest-pep8', 'pytest-cov', 'pytest-spark', 'mock']
     },
