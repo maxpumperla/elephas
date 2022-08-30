@@ -198,6 +198,7 @@ class SparkModel(object):
             self.stop_server()
 
     def _predict(self, rdd: RDD):
+        rdd = rdd.zipWithIndex()
         if self.num_workers:
             rdd = rdd.repartition(self.num_workers)
         json_model = self.master_network.to_json()
@@ -208,10 +209,13 @@ class SparkModel(object):
         def _predict(model, custom_objects, data):
             model = model_from_json(model, custom_objects)
             model.set_weights(weights.value)
-            data = np.array([x for x in data])
-            return model.predict(data)
+            data, indices = zip(*data)
+            data = np.array(data)
+            return zip(model.predict(data), indices)
 
-        predictions = rdd.mapPartitions(partial(_predict, json_model, custom_objects)).collect()
+        predictions_and_indices = rdd.mapPartitions(partial(_predict, json_model, custom_objects))
+        predictions_sorted_by_index = predictions_and_indices.sortBy(lambda x: x[1])
+        predictions = predictions_sorted_by_index.map(lambda x: x[0]).collect()
         return predictions
 
     def _evaluate(self, rdd: RDD, **kwargs):
