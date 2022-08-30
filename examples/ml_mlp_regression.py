@@ -12,16 +12,14 @@ from pyspark.ml import Pipeline
 
 
 # Define basic parameters
-batch_size = 64
-epochs = 1
+batch_size = 16
+epochs = 100
 
 # Load data
 (x_train, y_train), (x_test, y_test) = boston_housing.load_data()
 
 x_train = x_train.astype("float32")
 x_test = x_test.astype("float32")
-x_train /= 255
-x_test /= 255
 print(x_train.shape[0], 'train samples')
 print(x_test.shape[0], 'test samples')
 
@@ -41,7 +39,7 @@ sc = SparkContext(conf=conf)
 df = to_data_frame(sc, x_train, y_train)
 test_df = to_data_frame(sc, x_test, y_test)
 
-sgd = optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
+sgd = optimizers.SGD(lr=0.000001)
 sgd_conf = optimizers.serialize(sgd)
 
 # Initialize Spark ML Estimator
