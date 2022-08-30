@@ -198,24 +198,39 @@ class SparkModel(object):
             self.stop_server()
 
     def _predict(self, rdd: RDD):
-        rdd = rdd.zipWithIndex()
-        if self.num_workers:
-            rdd = rdd.repartition(self.num_workers)
         json_model = self.master_network.to_json()
         weights = self.master_network.get_weights()
         weights = rdd.context.broadcast(weights)
-        custom_objects = self.custom_objects
+        custom_objs = self.custom_objects
 
-        def _predict(model, custom_objects, data):
-            model = model_from_json(model, custom_objects)
+        def _predict(model_as_json, custom_objects, data):
+            model = model_from_json(model_as_json, custom_objects)
+            model.set_weights(weights.value)
+            data = np.array([x for x in data])
+            return model.predict(data)
+
+        def _predict_with_indices(model_as_json, custom_objects, data):
+            model = model_from_json(model_as_json, custom_objects)
             model.set_weights(weights.value)
             data, indices = zip(*data)
             data = np.array(data)
             return zip(model.predict(data), indices)
 
-        predictions_and_indices = rdd.mapPartitions(partial(_predict, json_model, custom_objects))
-        predictions_sorted_by_index = predictions_and_indices.sortBy(lambda x: x[1])
-        predictions = predictions_sorted_by_index.map(lambda x: x[0]).collect()
+        if self.num_workers and self.num_workers > 1:
+            # if there are multiple workers, we need to retrieve element indices and preserve them throughout
+            # the inference process, since we'll need to sort by index before returning the result, as repartitioning
+            # does not preserve ordering, but the users will expect prediction results which correspond to the ordering
+            # of samples they supplied.
+            rdd = rdd.zipWithIndex()
+            rdd = rdd.repartition(self.num_workers)
+            predictions_and_indices = rdd.mapPartitions(partial(_predict_with_indices, json_model, custom_objs))
+            predictions_sorted_by_index = predictions_and_indices.sortBy(lambda x: x[1])
+            predictions = predictions_sorted_by_index.map(lambda x: x[0]).collect()
+        else:
+            # if there are no workers specified or only a single worker, we don't need to worry about handling index
+            # values, since there will be no shuffling
+            predictions = rdd.mapPartitions(partial(_predict, json_model, custom_objs)).collect()
+
         return predictions
 
     def _evaluate(self, rdd: RDD, **kwargs):

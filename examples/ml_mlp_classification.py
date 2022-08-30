@@ -15,7 +15,7 @@ from pyspark.ml import Pipeline
 # Define basic parameters
 batch_size = 64
 nb_classes = 10
-epochs = 1
+epochs = 20
 
 # Load data
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
@@ -26,6 +26,11 @@ x_train = x_train.astype("float32")
 x_test = x_test.astype("float32")
 x_train /= 255
 x_test /= 255
+
+x_train = x_train[:5000]
+x_test = x_test[:1000]
+y_train = y_train[:5000]
+y_test = y_test[:1000]
 print(x_train.shape[0], 'train samples')
 print(x_test.shape[0], 'test samples')
 
@@ -74,7 +79,7 @@ fitted_pipeline = pipeline.fit(df)
 # Evaluate Spark model by evaluating the underlying model
 prediction = fitted_pipeline.transform(test_df)
 pnl = prediction.select("label", "prediction")
-pnl.show(100)
+pnl.show(100, truncate=False)
 
 prediction_and_label = pnl.rdd.map(lambda row: (row.label, row.prediction))
 metrics = MulticlassMetrics(prediction_and_label)
