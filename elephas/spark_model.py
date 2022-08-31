@@ -249,18 +249,21 @@ class SparkModel(object):
             feature_iterator, label_iterator = tee(data_iterator, 2)
             x_test = np.asarray([x for x, y in feature_iterator])
             y_test = np.asarray([y for x, y in label_iterator])
-            return [model.evaluate(x_test, y_test, **kwargs)]
+            # return the evaluation results and the size of the sample
+            return [model.evaluate(x_test, y_test, **kwargs) + [len(x_test)]]
 
         if self.num_workers:
             rdd = rdd.repartition(self.num_workers)
         results = rdd.mapPartitions(partial(_evaluate, json_model, optimizer, loss, custom_objects, metrics, kwargs))
+        # We need to compute
+        n = rdd.count()
         if not metrics:
             # if no metrics, we can just return the scalar corresponding to the loss value
-            return results.mean()
+            return results.map(lambda x: (x[1] / n) * x[0]).sum()
         else:
             # if we do have metrics, we want to return a list of [loss value, metric value] - to match the keras API
-            loss_value = results.map(lambda x: x[0]).mean()
-            metric_value = results.map(lambda x: x[1]).mean()
+            loss_value = results.map(lambda x: (x[2] / n) * x[0]).sum()
+            metric_value = results.map(lambda x: (x[2] / n) * x[1]).sum()
             return [loss_value, metric_value]
 
 
