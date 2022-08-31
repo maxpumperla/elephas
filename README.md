@@ -19,7 +19,7 @@ applications, including:
 
 Schematically, elephas works as follows.
 
-![Elephas](https://github.com/danielenricoahall/elephas/blob/master/elephas.gif)
+![Elephas](https://github.com/danielenricocahall/elephas/blob/master/elephas.gif)
 
 Table of content:
 * [Elephas: Distributed Deep Learning with Keras & Spark](#elephas-distributed-deep-learning-with-keras-&-spark-)
