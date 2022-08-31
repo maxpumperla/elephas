@@ -1,6 +1,6 @@
 # Elephas: Distributed Deep Learning with Keras & Spark 
 
-![Elephas](https://github.com/maxpumperla/elephas/blob/master/elephas-logo.png)
+![Elephas](https://github.com/danielenricocahall/elephas/blob/master/elephas-logo.png)
 
 ## 
 
@@ -19,7 +19,7 @@ applications, including:
 
 Schematically, elephas works as follows.
 
-![Elephas](https://github.com/maxpumperla/elephas/blob/master/elephas.gif)
+![Elephas](https://github.com/danielenricoahall/elephas/blob/master/elephas.gif)
 
 Table of content:
 * [Elephas: Distributed Deep Learning with Keras & Spark](#elephas-distributed-deep-learning-with-keras-&-spark-)
@@ -39,7 +39,7 @@ Table of content:
 Elephas brings deep learning with [Keras](http://keras.io) to [Spark](http://spark.apache.org). Elephas intends to 
 keep the simplicity and high usability of Keras, thereby allowing for fast prototyping of distributed models, which 
 can be run on massive data sets. For an introductory example, see the following 
-[iPython notebook](https://github.com/maxpumperla/elephas/blob/master/examples/Spark_ML_Pipeline.ipynb).
+[iPython notebook](https://github.com/danielenricocahall/elephas/blob/master/examples/Spark_ML_Pipeline.ipynb).
 
 ἐλέφας is Greek for _ivory_ and an accompanying project to κέρας, meaning _horn_. If this seems weird mentioning, like 
 a bad dream, you should confirm it actually is at the 
