@@ -1,3 +1,5 @@
+<span style="color:red">**UPDATE**: As of 3.2.0, maintenance of this project has moved over to https://github.com/danielenricocahall/elephas for consistency of ownership and CI. Please submit all Issues and Pull Requests there!</span>
+
 # Elephas: Distributed Deep Learning with Keras & Spark 
 
 ![Elephas](https://github.com/maxpumperla/elephas/blob/master/elephas-logo.png)
