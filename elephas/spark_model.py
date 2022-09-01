@@ -255,16 +255,20 @@ class SparkModel(object):
         if self.num_workers:
             rdd = rdd.repartition(self.num_workers)
         results = rdd.mapPartitions(partial(_evaluate, json_model, optimizer, loss, custom_objects, metrics, kwargs))
-        # We need to compute
-        n = rdd.count()
         if not metrics:
             # if no metrics, we can just return the scalar corresponding to the loss value
-            return results.map(lambda x: (x[1] / n) * x[0]).sum()
+            agg_loss, number_of_samples = results.\
+                map(lambda x: (x[1] * x[0], x[1])).\
+                reduce(lambda x, y: (x[0] + y[0], x[1] + y[1]))
+            return agg_loss / number_of_samples
         else:
             # if we do have metrics, we want to return a list of [loss value, metric value] - to match the keras API
-            loss_value = results.map(lambda x: (x[2] / n) * x[0]).sum()
-            metric_value = results.map(lambda x: (x[2] / n) * x[1]).sum()
-            return [loss_value, metric_value]
+            agg_loss, agg_metric, number_of_samples = results.\
+                map(lambda x: (x[2] * x[0], x[2] * x[1], x[2])).\
+                reduce(lambda x, y: (x[0] + y[0], x[1] + y[1], x[2] + y[2]))
+            avg_loss = agg_loss / number_of_samples
+            avg_metric = agg_metric / number_of_samples
+            return [avg_loss, avg_metric]
 
 
 def load_spark_model(file_name):
