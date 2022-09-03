@@ -113,5 +113,5 @@ def test_training_regression(spark_context, mode, parameter_server_mode, num_wor
     #  and when the mean of those means is computed, we would get 2.
     # This isn't an issue with classification models because it only requires the argmax be correct in the result array
     # TODO quantify the maximum difference and make that the tolerance?
-    assert isclose(evals[0], spark_model.master_network.evaluate(x_test, y_test)[0], abs_tol=5.0)
-    assert isclose(evals[1], spark_model.master_network.evaluate(x_test, y_test)[1], abs_tol=5.0)
+    assert isclose(evals[0], spark_model.master_network.evaluate(x_test, y_test)[0], abs_tol=0.01)
+    assert isclose(evals[1], spark_model.master_network.evaluate(x_test, y_test)[1], abs_tol=0.01)
