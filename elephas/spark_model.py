@@ -51,7 +51,7 @@ class SparkModel(object):
         if custom_objects is None:
             custom_objects = {}
         if metrics is None:
-            metrics = ["accuracy"]
+            metrics = []
         self.mode = mode
         self.frequency = frequency
         self.num_workers = num_workers
@@ -249,28 +249,24 @@ class SparkModel(object):
             feature_iterator, label_iterator = tee(data_iterator, 2)
             x_test = np.asarray([x for x, y in feature_iterator])
             y_test = np.asarray([y for x, y in label_iterator])
+            evaluation_results = model.evaluate(x_test, y_test, **kwargs)
+            evaluation_results = [evaluation_results] if not isinstance(evaluation_results, list) \
+                else evaluation_results
             # return the evaluation results and the size of the sample
-            return [model.evaluate(x_test, y_test, **kwargs) + [len(x_test)]]
+            return [evaluation_results + [len(x_test)]]
 
         if self.num_workers:
             rdd = rdd.repartition(self.num_workers)
         results = rdd.mapPartitions(partial(_evaluate, json_model, optimizer, loss, custom_objects, metrics, kwargs))
-        if not metrics:
-            # if no metrics, we can just return the scalar corresponding to the loss value
-            agg_loss, number_of_samples = results.\
-                map(lambda x: (x[1] * x[0], x[1])).\
-                reduce(lambda x, y: (x[0] + y[0], x[1] + y[1]))
-            return agg_loss / number_of_samples
-        else:
-            # if we do have metrics, we want to return a list of [loss value, metric value] - to match the keras API
-            mapping_function = lambda x: tuple(x[-1] * x[i] for i in range(len(x) - 1)) + (x[-1],)
-            reducing_function = lambda x, y: tuple(x[i] + y[i] for i in range(len(x)))
-            agg_loss, *agg_metrics, number_of_samples = results.\
-                map(mapping_function).\
-                reduce(reducing_function)
-            avg_loss = agg_loss / number_of_samples
-            avg_metrics = [agg_metric / number_of_samples for agg_metric in agg_metrics]
-            return [avg_loss, *avg_metrics]
+        mapping_function = lambda x: tuple(x[-1] * x[i] for i in range(len(x) - 1)) + (x[-1],)
+        reducing_function = lambda x, y: tuple(x[i] + y[i] for i in range(len(x)))
+        agg_loss, *agg_metrics, number_of_samples = results.\
+            map(mapping_function).\
+            reduce(reducing_function)
+        avg_loss = agg_loss / number_of_samples
+        avg_metrics = [agg_metric / number_of_samples for agg_metric in agg_metrics]
+        # return loss and list of metrics if there are metrics, otherwise just return the scalar loss
+        return [avg_loss, *avg_metrics] if avg_metrics else avg_loss
 
 
 def load_spark_model(file_name):
