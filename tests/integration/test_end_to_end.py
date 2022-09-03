@@ -110,3 +110,34 @@ def test_training_regression(spark_context, mode, parameter_server_mode, num_wor
     assert isclose(evals[1], spark_model.master_network.evaluate(x_test, y_test)[1], abs_tol=0.01)
     assert isclose(evals[2], spark_model.master_network.evaluate(x_test, y_test)[2], abs_tol=0.01)
 
+
+def test_training_regression_no_metrics(spark_context, boston_housing_dataset, regression_model):
+    x_train, y_train, x_test, y_test = boston_housing_dataset
+    rdd = to_simple_rdd(spark_context, x_train, y_train)
+
+    # Define basic parameters
+    batch_size = 64
+    epochs = 1
+    sgd = SGD(lr=0.0000001)
+    regression_model.compile(sgd, 'mse')
+    spark_model = SparkModel(regression_model, frequency='epoch', mode='synchronous', port=4000 + random.randint(0, 800))
+
+    # Train Spark model
+    spark_model.fit(rdd, epochs=epochs, batch_size=batch_size, verbose=0, validation_split=0.1)
+
+    # run inference on trained spark model
+    predictions = spark_model.predict(x_test)
+
+    # assert we can supply rdd and get same prediction results when supplying numpy array
+    test_rdd = spark_context.parallelize(x_test)
+    assert all(np.isclose(x, y, 0.01) for x, y in zip(predictions, spark_model.predict(test_rdd)))
+
+    # assert we get the same prediction result with calling predict on keras model directly
+    assert all(np.isclose(x, y, 0.01) for x, y in zip(predictions, spark_model.master_network.predict(x_test)))
+
+    # assert we get the same evaluation results when calling evaluate on keras model directly
+    assert isclose(spark_model.evaluate(x_test, y_test),
+                   spark_model.master_network.evaluate(x_test, y_test), abs_tol=0.01)
+
+
+
