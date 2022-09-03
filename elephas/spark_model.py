@@ -263,12 +263,14 @@ class SparkModel(object):
             return agg_loss / number_of_samples
         else:
             # if we do have metrics, we want to return a list of [loss value, metric value] - to match the keras API
-            agg_loss, agg_metric, number_of_samples = results.\
-                map(lambda x: (x[2] * x[0], x[2] * x[1], x[2])).\
-                reduce(lambda x, y: (x[0] + y[0], x[1] + y[1], x[2] + y[2]))
+            mapping_function = lambda x: tuple(x[-1] * x[i] for i in range(len(x) - 1)) + (x[-1],)
+            reducing_function = lambda x, y: tuple(x[i] + y[i] for i in range(len(x)))
+            agg_loss, *agg_metrics, number_of_samples = results.\
+                map(mapping_function).\
+                reduce(reducing_function)
             avg_loss = agg_loss / number_of_samples
-            avg_metric = agg_metric / number_of_samples
-            return [avg_loss, avg_metric]
+            avg_metrics = [agg_metric / number_of_samples for agg_metric in agg_metrics]
+            return [avg_loss, *avg_metrics]
 
 
 def load_spark_model(file_name):
