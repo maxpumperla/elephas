@@ -28,6 +28,7 @@ Table of content:
   * [Basic Spark integration](#basic-spark-integration)
   * [Spark MLlib integration](#spark-mllib-integration)
   * [Spark ML integration](#spark-ml-integration)
+  * [Hadoop integration](#hadoop-integration)
   * [Distributed hyper-parameter optimization](#distributed-hyper-parameter-optimization)
   * [Distributed training of ensemble models](#distributed-training-of-ensemble-models)
   * [Discussion](#discussion)
@@ -191,6 +192,22 @@ model.add(CustomLayer(...))
 
 estimator = ElephasEstimator(model, epochs=epochs, batch_size=batch_size)
 estimator.set_custom_objects({'custom_activation': custom_activation, 'CustomLayer': CustomLayer})
+```
+
+## Hadoop Integration
+
+In addition to saving locally, models may be saved directly into a network-accessible Hadoop cluster.
+
+```python
+spark_model.save('/absolute/file/path/model.h5', to_hadoop=True)
+```
+
+Models saved on a network-accessible Hadoop cluster may be loaded as follows.
+
+```python
+from elephas.spark_model import load_spark_model
+
+spark_model = load_spark_model('/absolute/file/path/model.h5', from_hadoop=True)
 ```
 
 ## Distributed hyper-parameter optimization
