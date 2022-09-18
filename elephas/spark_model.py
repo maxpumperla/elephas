@@ -1,4 +1,8 @@
 import json
+import subprocess
+from uuid import uuid4
+from pathlib import Path
+from copy import deepcopy
 from functools import partial
 from itertools import tee
 from typing import Union
@@ -84,7 +88,29 @@ class SparkModel(object):
         config.update(self.kwargs)
         return config
 
-    def save(self, file_name):
+    def save(self, file_name: str, overwrite: bool = False, to_hadoop: bool = False):
+        """
+        Save an elephas model as a h5 or keras file. The default functionality is to
+        save the model file locally without overwriting. This can be changed to toggle
+        overwriting and saving directly into a network-accessible Hadoop cluster.
+
+        :param file_name: String, name or full path of the model file to be saved
+        :param overwrite: Boolean, toggles between overwriting or raising error if
+        file already excists, default is False
+        :param to_hadoop: Boolean, toggles between saving locally or on a Hadoop
+        cluster, default is False
+        """
+        assert (
+            file_name[-3:] == ".h5" or file_name[-6:] == ".keras"
+        ), "File name must end with either '.h5' or '.keras'"
+
+        if overwrite and not to_hadoop and Path(file_name).exists():
+            Path(file_name).unlink()
+
+        if to_hadoop:
+            cluster_file_path = deepcopy(file_name)
+            file_name = str(uuid4()) + "-temp-model-file." + file_name.split(".")[-1]
+
         model = self._master_network
         model.save(file_name)
         f = h5py.File(file_name, mode='a')
@@ -96,6 +122,15 @@ class SparkModel(object):
 
         f.flush()
         f.close()
+
+        if to_hadoop:
+            # TODO: Consider implementing a try-except clause to use "hdfs dfs" instead
+            cli = ["hadoop", "fs", "-moveFromLocal"]
+            if overwrite:
+                cli.append("-f")
+            cli.append(file_name)
+            cli.append(cluster_file_path)
+            subprocess.run(cli)
 
     @property
     def training_histories(self):
@@ -269,19 +304,6 @@ class SparkModel(object):
         return [avg_loss, *avg_metrics] if avg_metrics else avg_loss
 
 
-def load_spark_model(file_name):
-    model = load_model(file_name)
-    f = h5py.File(file_name, mode='r')
-
-    elephas_conf = json.loads(f.attrs.get('distributed_config'))
-    class_name = elephas_conf.get('class_name')
-    config = elephas_conf.get('config')
-    if class_name == "SparkModel":
-        return SparkModel(model=model, **config)
-    elif class_name == "SparkMLlibModel":
-        return SparkMLlibModel(model=model, **config)
-
-
 class SparkMLlibModel(SparkModel):
 
     def __init__(self, model, mode='asynchronous', frequency='epoch', parameter_server_mode='http',
@@ -323,3 +345,40 @@ class SparkMLlibModel(SparkModel):
         else:
             raise ValueError(
                 'Provide either an MLLib matrix or vector, got {}'.format(mllib_data.__name__))
+
+
+def load_spark_model(
+    file_name: str, from_hadoop: bool = False
+) -> Union[SparkModel, SparkMLlibModel]:
+    """
+    Load an elephas model from a h5 or keras file. Assumes file is located locally by
+    default, but can be toggled to load from a network-connected Hadoop cluster as well.
+
+    :param file_name: String, name or full path of the model file to be loaded
+    :param from_hadoop: Boolean, toggles between local or Hadoop cluster file loading,
+    default is False
+    :return: SparkModel or SparkMLlibModel, loaded elephas model
+    """
+    assert (
+            file_name[-3:] == ".h5" or file_name[-6:] == ".keras"
+    ), "File name must end with either '.h5' or '.keras'"
+
+    if from_hadoop:
+        temp_file = str(uuid4()) + "-temp-model-file." + file_name.split(".")[-1]
+        subprocess.run(["hadoop", "fs", "-copyToLocal", file_name, temp_file])
+        file_name = temp_file
+
+    model = load_model(file_name)
+    f = h5py.File(file_name, mode="r")
+
+    elephas_conf = json.loads(f.attrs.get("distributed_config"))
+    class_name = elephas_conf.get("class_name")
+    config = elephas_conf.get("config")
+
+    if from_hadoop:
+        Path(file_name).unlink()
+
+    if class_name == "SparkModel":
+        return SparkModel(model=model, **config)
+    elif class_name == "SparkMLlibModel":
+        return SparkMLlibModel(model=model, **config)
