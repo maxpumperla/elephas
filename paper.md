@@ -11,11 +11,14 @@ authors:
   - name: Max Pumperla
     affiliation: "1, 2"
   - name: Daniel Cahall
+    affiliation: 3
 affiliations:
   - name: IU Internationale Hochschule
     index: 1
   - name: Pathmind Inc.
-    index: 2 
+    index: 2
+  - name: Independent researcher
+    index: 3
 date: 18 November 2021
 bibliography: paper.bib
     
