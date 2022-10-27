@@ -10,6 +10,7 @@ tags:
 authors:
   - name: Max Pumperla
     affiliation: "1, 2"
+  - name: Daniel Cahall
 affiliations:
   - name: IU Internationale Hochschule
     index: 1
