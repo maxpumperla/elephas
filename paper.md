@@ -149,6 +149,5 @@ To summarize, elephas provides you with training and evaluation support for cust
 # Acknowledgements
 
 We would like to thank all the open-source contributors that helped making `elephas` what it is today.
-A special thanks goes to Daniel Cahill, who has taken over the maintainer role for this project since 2020.
 
 # References
